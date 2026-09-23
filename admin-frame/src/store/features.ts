@@ -1,3 +1,4 @@
+import { computed } from "@preact/signals";
 import type { FeatureEventMessage } from "../../../src/core/protocol";
 import { createFeatureStores } from "../../../src/core/stores";
 
@@ -15,3 +16,15 @@ export const stores = createFeatureStores({
     appFrame()?.postMessage(message, '*');
   },
 });
+
+// What the admin renders. A component reading one re-renders only when its value changes.
+export const adminPath = computed(() => stores.navigation.state.value.adminPath);
+export const appUrl = computed(() => stores.navigation.state.value.url);
+export const appNavItems = computed(() => stores.navMenu.state.value.items);
+export const appWindows = computed(() => stores.appWindow.state.value.appWindows);
+export const isLoading = computed(() => stores.loading.state.value.isLoading);
+export const modalStates = computed(() => stores.modal.state.value.modalStates);
+export const saveBars = computed(() => stores.saveBar.state.value.saveBars);
+export const shareRequest = computed(() => stores.share.state.value.current);
+export const titleBar = computed(() => stores.titleBar.state.value.titleBar);
+export const toasts = computed(() => stores.toast.state.value.toasts);

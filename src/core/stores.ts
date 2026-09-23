@@ -1,5 +1,4 @@
-import { createStore } from 'zustand/vanilla';
-import { combine } from 'zustand/middleware';
+import { signal, type ReadonlySignal } from '@preact/signals-core';
 
 /**
  * Admin-side state for each App Bridge feature. The admin-frame renders it;
@@ -110,6 +109,27 @@ export type ShareOutcome = 'shared' | 'cancelled';
 /** Sends an event to the app, e.g. `emit('appWindow', 'hide', { id })`. */
 export type FeatureEmitter = (feature: string, event: string, payload?: unknown) => void;
 
+type Setter<S> = (change: Partial<S> | ((state: S) => Partial<S>)) => void;
+
+export interface FeatureStore<S, A> {
+  /** The feature's state. Read `.value` to track it, `.peek()` to read it untracked. */
+  state: ReadonlySignal<S>;
+  /** Changes the state: merges `change` into it. */
+  set: Setter<S>;
+  /** Puts the state back how it started. */
+  reset(): void;
+  actions: A;
+}
+
+function defineStore<S extends object, A>(initial: S, actions: (set: Setter<S>, get: () => S) => A): FeatureStore<S, A> {
+  const state = signal(initial);
+  const get = () => state.peek();
+  const set: Setter<S> = change => {
+    state.value = { ...get(), ...(typeof change === 'function' ? change(get()) : change) };
+  };
+  return { state, set, reset: () => { state.value = initial; }, actions: actions(set, get) };
+}
+
 function createModalStore() {
   const emptyModal = (id: string): ModalState => ({
     open: false,
@@ -118,7 +138,7 @@ function createModalStore() {
     html: '',
   });
 
-  return createStore(combine(
+  return defineStore(
     { modalStates: {} as Record<string, ModalState> },
     set => {
       const patch = (id: string, change: (modal: ModalState) => Partial<ModalState>) => set(state => {
@@ -135,20 +155,20 @@ function createModalStore() {
         updateHtml: (payload: { id: string; html: string }) => patch(payload.id, () => ({ html: payload.html })),
       };
     },
-  ));
+  );
 }
 
 function createLoadingStore() {
-  return createStore(combine(
+  return defineStore(
     { isLoading: false },
     set => ({
       setLoading: (payload: { isLoading: boolean }) => set({ isLoading: payload.isLoading }),
     }),
-  ));
+  );
 }
 
 function createSaveBarStore() {
-  return createStore(combine(
+  return defineStore(
     { saveBars: {} as Record<string, SaveBarState> },
     set => {
       const patch = (id: string, change: (saveBar: SaveBarState) => Partial<SaveBarState>) => set(state => {
@@ -164,43 +184,43 @@ function createSaveBarStore() {
           patch(payload.id, () => ({ discardConfirmation: payload.discardConfirmation ?? false })),
       };
     },
-  ));
+  );
 }
 
 function createNavMenuStore() {
-  return createStore(combine(
+  return defineStore(
     { items: [] as NavItem[] },
     set => ({
       setItems: (payload: { items: NavItem[] }) => set({ items: payload.items }),
       addItem: (payload: NavItem) => set(state => ({ items: [...state.items, payload] })),
       clearItems: () => set({ items: [] }),
     }),
-  ));
+  );
 }
 
 function createToastStore() {
-  return createStore(combine(
+  return defineStore(
     { toasts: [] as Toast[] },
     set => ({
       show: (payload: Toast) => set(state => ({ toasts: [...state.toasts, payload] })),
       hide: (payload: { id: string }) => set(state => ({ toasts: state.toasts.filter(toast => toast.id !== payload.id) })),
     }),
-  ));
+  );
 }
 
 function createResourcePickerStore() {
-  return createStore(combine(
+  return defineStore(
     // What the picker resolves to; `undefined` means the merchant cancelled.
     { selection: [] as unknown[] | undefined },
     (set, get) => ({
       open: (_payload: { options: unknown }) => get().selection,
       setSelection: (payload: { selection: unknown[] | undefined }) => set({ selection: payload.selection }),
     }),
-  ));
+  );
 }
 
 function createNavigationStore(emit: FeatureEmitter) {
-  return createStore(combine(
+  return defineStore(
     { url: null, adminPath: null, entries: [] } as NavigationState,
     set => {
       const record = (entry: NavigationEntry, change: Partial<NavigationState> = {}) =>
@@ -218,11 +238,11 @@ function createNavigationStore(emit: FeatureEmitter) {
         navigate: (payload: { href: string }) => emit('navigation', 'navigate', payload),
       };
     },
-  ));
+  );
 }
 
 function createAppWindowStore(emit: FeatureEmitter) {
-  return createStore(combine(
+  return defineStore(
     { appWindows: {} as Record<string, AppWindowState> },
     (set, get) => {
       const patch = (id: string, change: Partial<AppWindowState>) => set(state => {
@@ -242,11 +262,11 @@ function createAppWindowStore(emit: FeatureEmitter) {
         toggle: (payload: { id: string }) => setOpen(payload.id, !get().appWindows[payload.id]?.open),
       };
     },
-  ));
+  );
 }
 
 function createTitleBarStore(emit: FeatureEmitter) {
-  return createStore(combine(
+  return defineStore(
     // The app's `<ui-title-bar>` or `<s-page>`, or `null` without one.
     { titleBar: null as TitleBarState | null },
     set => ({
@@ -254,13 +274,13 @@ function createTitleBarStore(emit: FeatureEmitter) {
       /** The merchant clicked a title bar action. */
       click: (payload: { id: string }) => emit('titleBar', 'click', payload),
     }),
-  ));
+  );
 }
 
 function createShareStore() {
   let settle: ((outcome: ShareOutcome) => void) | undefined;
 
-  return createStore(combine(
+  return defineStore(
     {
       /** The share sheet showing in the admin. */
       current: null as ShareRequest | null,
@@ -283,16 +303,16 @@ function createShareStore() {
       },
       setOutcome: (payload: { outcome: ShareOutcome | undefined }) => set({ outcome: payload.outcome }),
     }),
-  ));
+  );
 }
 
 function createPrintStore() {
-  return createStore(combine(
+  return defineStore(
     { count: 0 },
     set => ({
       print: () => set(state => ({ count: state.count + 1 })),
     }),
-  ));
+  );
 }
 
 export interface FeatureStoresOptions {
@@ -322,14 +342,12 @@ export type FeatureName = keyof FeatureStores;
 
 /** Calls `action` on a feature's store. Returns `handled: false` for unknown features or actions. */
 export function runFeatureAction(stores: FeatureStores, feature: string, action: string, payload: unknown) {
-  const store = stores[feature as FeatureName];
-  const fn = store && (store.getState() as Record<string, unknown>)[action];
+  const store = Object.hasOwn(stores, feature) ? stores[feature as FeatureName] : undefined;
+  const fn = store && Object.hasOwn(store.actions, action) ? (store.actions as Record<string, unknown>)[action] : undefined;
   if (typeof fn !== 'function') return { handled: false, result: undefined };
   return { handled: true, result: (fn as (payload: unknown) => unknown)(payload) };
 }
 
 export function resetFeatureStores(stores: FeatureStores) {
-  for (const store of Object.values(stores)) {
-    (store as { setState(state: unknown, replace: true): void }).setState(store.getInitialState(), true);
-  }
+  for (const store of Object.values(stores)) store.reset();
 }

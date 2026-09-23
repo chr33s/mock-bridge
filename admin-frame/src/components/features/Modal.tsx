@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
-import { useStore } from "zustand";
-import { stores } from "../../store/features";
+import { useEffect, useRef } from "preact/hooks";
+import { modalStates as modalStatesSignal } from "../../store/features";
+
+type ModalElement = HTMLElement & { showOverlay?(): void; hideOverlay?(): void };
 
 export function Modal() {
-  const modalStates = useStore(stores.modal, state => state.modalStates);
+  const modalStates = modalStatesSignal.value;
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -11,16 +12,16 @@ export function Modal() {
     if (!container) return;
 
     Object.entries(modalStates).forEach(([id, state]) => {
-      const modal = container.querySelector(`s-modal#${id}`) as HTMLElement;
+      const modal = container.querySelector(`s-modal#${id}`) as ModalElement;
       const modalIsOpen = (modal.shadowRoot?.querySelector('dialog') as HTMLDialogElement)?.getAttribute('open') === '';
 
       if (state.open && !modalIsOpen) {
         setTimeout(() => {
-          (modal as unknown as JSX.IntrinsicElements['s-modal']).showOverlay?.();
+          modal.showOverlay?.();
         }, 100);
       } else if (!state.open && modalIsOpen) {
         setTimeout(() => {
-          (modal as unknown as JSX.IntrinsicElements['s-modal']).hideOverlay?.();
+          modal.hideOverlay?.();
         }, 100);
       }
     });

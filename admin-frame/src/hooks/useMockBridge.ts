@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { appBase, embedUrl, fetchSessionToken, signalMockEnvironment } from "../lib/app";
 import type { Config } from "./useConfig";
 

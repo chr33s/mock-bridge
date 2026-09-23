@@ -1,10 +1,7 @@
-import { useStore } from "zustand";
-import { stores } from "../../store/features";
+import { isLoading } from "../../store/features";
 
 export function Loading() {
-  const isLoading = useStore(stores.loading, state => state.isLoading);
-
-  if (!isLoading) return null;
+  if (!isLoading.value) return null;
 
   return (
     <div

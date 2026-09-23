@@ -1,4 +1,3 @@
-import { useStore } from "zustand"
 import { AdminPage } from "./components/AdminPage"
 import { EmbeddedApp } from "./components/EmbeddedApp"
 import { AppWindow } from "./components/features/AppWindow"
@@ -11,12 +10,11 @@ import { Frame } from "./components/Frame"
 import { useAdminRoute } from "./hooks/useAdminRoute"
 import { useBridgeMessages } from "./hooks/useBridgeMessages"
 import { useConfig } from "./hooks/useConfig"
-import { stores } from "./store/features"
+import { adminPath } from "./store/features"
 
 function App() {
   const config = useConfig()
   const { route, navigateApp } = useAdminRoute(config)
-  const adminPath = useStore(stores.navigation, state => state.adminPath)
   useBridgeMessages(config)
 
   return (
@@ -27,8 +25,8 @@ function App() {
       <Toast />
       <Share />
 
-      {adminPath !== null ? (
-        <AdminPage path={adminPath} />
+      {adminPath.value !== null ? (
+        <AdminPage path={adminPath.value} />
       ) : config && route && (
         <>
           <AppWindow config={config} />

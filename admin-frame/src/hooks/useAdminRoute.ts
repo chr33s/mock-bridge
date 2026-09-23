@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "preact/hooks";
+import { effect } from "@preact/signals";
 import { appPath } from "../lib/app";
 import { stores } from "../store/features";
 import type { Config } from "./useConfig";
@@ -22,7 +23,7 @@ export function useAdminRoute(config: Config | null) {
   const appsPrefix = config ? `/admin/apps/${config.clientId}` : '';
 
   const showApp = useCallback((entry: string) => {
-    stores.navigation.setState({ adminPath: null });
+    stores.navigation.set({ adminPath: null });
     setRoute(current => ({ entry, key: (current?.key ?? 0) + 1 }));
   }, []);
 
@@ -35,7 +36,7 @@ export function useAdminRoute(config: Config | null) {
       if (pathname === appsPrefix || pathname.startsWith(`${appsPrefix}/`)) {
         showApp(pathname.slice(appsPrefix.length) + search + hash);
       } else if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-        stores.navigation.setState({ adminPath: (pathname.slice('/admin'.length) || '/') + search + hash });
+        stores.navigation.set({ adminPath: (pathname.slice('/admin'.length) || '/') + search + hash });
       } else {
         showApp(config.appPath ?? '');
       }
@@ -49,7 +50,10 @@ export function useAdminRoute(config: Config | null) {
   useEffect(() => {
     if (!config) return;
 
-    return stores.navigation.subscribe((state, previous) => {
+    // Runs straight away with `state === previous`, which changes nothing.
+    let previous = stores.navigation.state.peek();
+    return effect(() => {
+      const state = stores.navigation.state.value;
       const entry = state.entries.length > previous.entries.length ? state.entries[state.entries.length - 1] : undefined;
       if (entry?.type === 'admin' && entry.newContext) {
         window.open(adminUrl(entry.path), '_blank');
@@ -62,15 +66,16 @@ export function useAdminRoute(config: Config | null) {
         const path = appPath(config, state.url);
         if (path !== null) history.replaceState(null, '', `${appsPrefix}${path}`);
       }
+      previous = state;
     });
   }, [config, appsPrefix]);
 
   /** Follows an app nav menu item: the showing app routes it, otherwise the app loads there. */
   const navigateApp = useCallback((href: string) => {
     if (!config) return;
-    const { adminPath, url, navigate } = stores.navigation.getState();
+    const { adminPath, url } = stores.navigation.state.peek();
     if (adminPath === null) {
-      navigate({ href });
+      stores.navigation.actions.navigate({ href });
       return;
     }
     const path = appPath(config, new URL(href, url ?? location.href).href) ?? href;

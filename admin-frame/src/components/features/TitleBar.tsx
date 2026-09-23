@@ -1,8 +1,7 @@
-import { Fragment } from "react";
-import { useStore } from "zustand";
-import { stores, type TitleBarAction } from "../../store/features";
+import { Fragment } from "preact";
+import { adminPath, stores, titleBar as titleBarSignal, type TitleBarAction } from "../../store/features";
 
-const click = (action: TitleBarAction) => stores.titleBar.getState().click({ id: action.id });
+const click = (action: TitleBarAction) => stores.titleBar.actions.click({ id: action.id });
 
 function ActionButton({ action, variant }: { action: TitleBarAction; variant?: 'primary' | 'secondary' | 'tertiary' }) {
   return (
@@ -20,9 +19,8 @@ function ActionButton({ action, variant }: { action: TitleBarAction; variant?: '
 
 /** The app's `<ui-title-bar>` or `<s-page>` title and actions. */
 export function TitleBar() {
-  const titleBar = useStore(stores.titleBar, state => state.titleBar);
-  const adminPath = useStore(stores.navigation, state => state.adminPath);
-  if (!titleBar || adminPath !== null) return null;
+  const titleBar = titleBarSignal.value;
+  if (!titleBar || adminPath.value !== null) return null;
 
   const { title, breadcrumb, primaryAction, secondaryActions } = titleBar;
 

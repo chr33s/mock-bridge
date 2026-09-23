@@ -1,9 +1,8 @@
-import { useEffect } from "react";
-import { useStore } from "zustand";
+import { useEffect } from "preact/hooks";
 import type { ShareOutcome } from "../../../../src/core/stores";
-import { stores } from "../../store/features";
+import { shareRequest, stores } from "../../store/features";
 
-const settle = (outcome: ShareOutcome) => stores.share.getState().settle({ outcome });
+const settle = (outcome: ShareOutcome) => stores.share.actions.settle({ outcome });
 
 const buttonStyle = {
   padding: '8px 16px',
@@ -16,7 +15,7 @@ const buttonStyle = {
 
 /** The share sheet `navigator.share()` opens. */
 export function Share() {
-  const current = useStore(stores.share, state => state.current);
+  const current = shareRequest.value;
 
   useEffect(() => {
     if (!current) return;

@@ -1,9 +1,9 @@
-import { useStore } from "zustand";
-import { stores, type NavItem } from "../store/features";
+import type { ComponentChildren } from "preact";
+import { adminPath as adminPathSignal, appNavItems as appNavItemsSignal, appUrl as appUrlSignal, stores, type NavItem } from "../store/features";
 import { TitleBar } from "./features/TitleBar";
 
 type Props = {
-  children: React.ReactNode;
+  children: ComponentChildren;
   /** Follows an item of the app's nav menu. */
   onNavigateApp: (href: string) => void;
 }
@@ -23,9 +23,9 @@ const defaultNavItems: NavItem[] = [
 const pathOf = (href: string, base: string) => new URL(href, base).pathname;
 
 export function Frame({ children, onNavigateApp }: Props) {
-  const appNavItems = useStore(stores.navMenu, state => state.items);
-  const adminPath = useStore(stores.navigation, state => state.adminPath);
-  const appUrl = useStore(stores.navigation, state => state.url);
+  const appNavItems = appNavItemsSignal.value;
+  const adminPath = adminPathSignal.value;
+  const appUrl = appUrlSignal.value;
 
   // Use app nav items if provided, otherwise show default Shopify admin nav
   const hasAppNav = appNavItems.length > 0;
@@ -66,7 +66,7 @@ export function Frame({ children, onNavigateApp }: Props) {
               <s-button
                 key={`default-${index}`}
                 variant={adminPath !== null && pathOf(adminPath, location.origin) === item.href ? 'secondary' : 'tertiary'}
-                onClick={() => stores.navigation.setState({ adminPath: item.href })}
+                onClick={() => stores.navigation.set({ adminPath: item.href })}
               >
                 {item.label}
               </s-button>

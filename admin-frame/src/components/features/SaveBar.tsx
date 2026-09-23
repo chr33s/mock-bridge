@@ -1,12 +1,10 @@
-import { useStore } from "zustand";
-import { stores } from "../../store/features";
+import { saveBars, stores } from "../../store/features";
 
 export function SaveBar() {
-  const saveBars = useStore(stores.saveBar, state => state.saveBars);
-  const hide = useStore(stores.saveBar, state => state.hide);
+  const { hide } = stores.saveBar.actions;
 
   // Get all visible save bars
-  const visibleSaveBars = Object.values(saveBars).filter(sb => sb.visible);
+  const visibleSaveBars = Object.values(saveBars.value).filter(sb => sb.visible);
 
   if (visibleSaveBars.length === 0) return null;
 

@@ -1,12 +1,11 @@
-import { useEffect } from "react";
-import { useStore } from "zustand";
-import { stores, type Toast as ToastData } from "../../store/features";
+import { useEffect } from "preact/hooks";
+import { stores, toasts as toastsSignal, type Toast as ToastData } from "../../store/features";
 
 const DEFAULT_DURATION = 5000;
 
 function ToastItem({ toast }: { toast: ToastData }) {
   useEffect(() => {
-    const timeout = setTimeout(() => stores.toast.getState().hide({ id: toast.id }), toast.duration ?? DEFAULT_DURATION);
+    const timeout = setTimeout(() => stores.toast.actions.hide({ id: toast.id }), toast.duration ?? DEFAULT_DURATION);
     return () => clearTimeout(timeout);
   }, [toast.id, toast.duration]);
 
@@ -30,7 +29,7 @@ function ToastItem({ toast }: { toast: ToastData }) {
 }
 
 export function Toast() {
-  const toasts = useStore(stores.toast, state => state.toasts);
+  const toasts = toastsSignal.value;
 
   if (toasts.length === 0) return null;
 

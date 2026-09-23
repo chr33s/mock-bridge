@@ -180,8 +180,8 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
 
   // Answers the admin's interactive features the way the handlers say to.
   function applyAnswers() {
-    stores.resourcePicker.getState().setSelection({ selection: handlers.selection });
-    stores.share.getState().setOutcome({ outcome: handlers.shareOutcome });
+    stores.resourcePicker.actions.setSelection({ selection: handlers.selection });
+    stores.share.actions.setOutcome({ outcome: handlers.shareOutcome });
   }
   applyAnswers();
 
@@ -273,25 +273,25 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
     },
     resourcePicker(selection) {
       handlers.selection = selection;
-      stores.resourcePicker.getState().setSelection({ selection });
+      stores.resourcePicker.actions.setSelection({ selection });
     },
     shareResult(outcome) {
       handlers.shareOutcome = outcome;
-      stores.share.getState().setOutcome({ outcome });
+      stores.share.actions.setOutcome({ outcome });
     },
 
     toasts: () => calls
       .filter(call => call.feature === 'toast' && call.action === 'show')
       .map(call => call.payload as Toast),
-    saveBar: id => stores.saveBar.getState().saveBars[id],
-    modal: id => stores.modal.getState().modalStates[id],
-    navMenu: () => stores.navMenu.getState().items,
-    loading: () => stores.loading.getState().isLoading,
-    navigation: () => stores.navigation.getState(),
-    appWindow: id => stores.appWindow.getState().appWindows[id],
-    titleBar: () => stores.titleBar.getState().titleBar,
+    saveBar: id => stores.saveBar.state.peek().saveBars[id],
+    modal: id => stores.modal.state.peek().modalStates[id],
+    navMenu: () => stores.navMenu.state.peek().items,
+    loading: () => stores.loading.state.peek().isLoading,
+    navigation: () => stores.navigation.state.peek(),
+    appWindow: id => stores.appWindow.state.peek().appWindows[id],
+    titleBar: () => stores.titleBar.state.peek().titleBar,
     clickTitleBarAction(idOrLabel) {
-      const titleBar = stores.titleBar.getState().titleBar;
+      const titleBar = stores.titleBar.state.peek().titleBar;
       const actions: TitleBarAction[] = titleBar ? [
         titleBar.breadcrumb,
         titleBar.primaryAction,
@@ -302,13 +302,13 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
         const known = actions.map(action => `"${action.label}"`).join(', ') || 'none';
         throw new Error(`[mock-bridge] No title bar action "${idOrLabel}". Actions: ${known}.`);
       }
-      stores.titleBar.getState().click({ id: action.id });
+      stores.titleBar.actions.click({ id: action.id });
     },
     shares: () => calls
       .filter(call => call.feature === 'share' && call.action === 'share')
       .map(call => call.payload as ShareRequest),
-    prints: () => stores.print.getState().count,
-    navigate: href => stores.navigation.getState().navigate({ href }),
+    prints: () => stores.print.state.peek().count,
+    navigate: href => stores.navigation.actions.navigate({ href }),
     idToken: () => host.idToken(),
 
     checkpoint() {
@@ -318,11 +318,11 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
       calls.length = 0;
       adminRequests.length = 0;
       // The app's window stays where it is.
-      const { url } = stores.navigation.getState();
-      const { titleBar } = stores.titleBar.getState();
+      const { url } = stores.navigation.state.peek();
+      const { titleBar } = stores.titleBar.state.peek();
       resetFeatureStores(stores);
-      stores.navigation.setState({ url });
-      stores.titleBar.setState({ titleBar });
+      stores.navigation.set({ url });
+      stores.titleBar.set({ titleBar });
       handlers = copy(baseline);
       applyAnswers();
     },

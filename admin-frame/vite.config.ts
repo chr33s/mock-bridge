@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
-import react, { reactCompilerPreset } from '@vitejs/plugin-react'
-import babel from '@rolldown/plugin-babel'
+import preact from '@preact/preset-vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -8,10 +7,11 @@ export default defineConfig(({ mode }) => {
   const { SHOPIFY_PORT = '3080' } = loadEnv(mode, '..', 'SHOPIFY_')
 
   return {
-    plugins: [
-      react(),
-      babel({ presets: [reactCompilerPreset()] }),
-    ],
+    plugins: [preact()],
+    resolve: {
+      // `src/core/stores.ts` lives outside this package: its signals must be the ones the components track.
+      dedupe: ['preact', '@preact/signals-core'],
+    },
     server: {
       proxy: {
         '/api': {

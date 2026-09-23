@@ -248,7 +248,7 @@ describe('createTestBridge', () => {
     expect(bridge.appWindow('editor')?.src).toBe('http://localhost:3000/editor/2');
 
     // The merchant closes the window in the admin.
-    bridge.stores.appWindow.getState().hide({ id: 'editor' });
+    bridge.stores.appWindow.actions.hide({ id: 'editor' });
     document.querySelector('button')!.click();
     await vi.waitFor(() => expect(bridge.appWindow('editor')?.open).toBe(true));
     expect(events).toEqual(['show', 'hide', 'show']);

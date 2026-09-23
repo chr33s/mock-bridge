@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
-import { useStore } from "zustand";
+import { useEffect, useState } from "preact/hooks";
 import type { Config } from "../../hooks/useConfig";
 import { APP_SANDBOX, embedUrl, fetchSessionToken, signalMockEnvironment } from "../../lib/app";
-import { stores } from "../../store/features";
+import { appWindows, stores } from "../../store/features";
 
 /** `<s-app-window>`: the app's page in a full-screen window over the admin. */
 export function AppWindow({ config }: { config: Config }) {
-  const appWindows = useStore(stores.appWindow, state => state.appWindows);
   const [sessionToken, setSessionToken] = useState('');
-  const open = Object.values(appWindows).filter(appWindow => appWindow.open && appWindow.src);
+  const open = Object.values(appWindows.value).filter(appWindow => appWindow.open && appWindow.src);
 
   useEffect(() => {
     fetchSessionToken(config).then(setSessionToken);
@@ -39,7 +37,7 @@ export function AppWindow({ config }: { config: Config }) {
           borderBottom: '1px solid rgb(227, 227, 227)',
         }}
       >
-        <s-button variant="tertiary" accessibilityLabel="Close" onClick={() => stores.appWindow.getState().hide({ id: appWindow.id })}>
+        <s-button variant="tertiary" accessibilityLabel="Close" onClick={() => stores.appWindow.actions.hide({ id: appWindow.id })}>
           Close
         </s-button>
       </div>

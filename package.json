@@ -73,6 +73,7 @@
     "url": "https://github.com/ctrlaltdylan/mock-bridge.git"
   },
   "dependencies": {
+    "@preact/signals-core": "^1.14.4",
     "@shopify/app-bridge-types": "^0.7.2",
     "body-parser": "^2.3.0",
     "chalk": "^6.0.0",
@@ -80,8 +81,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "http-proxy-middleware": "^4.2.0",
-    "jsonwebtoken": "^9.0.3",
-    "zustand": "^5.0.15"
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect } from "preact/hooks";
 import type { FeatureActionRequestMessage, FeatureActionResponseMessage } from "../../../src/core/protocol";
 import { runFeatureAction } from "../../../src/core/stores";
 import { fetchSessionToken } from "../lib/app";
@@ -30,7 +30,7 @@ export function useBridgeMessages(config: Config | null) {
         }
 
         // Some actions (like sharing) resolve once the merchant answers. Replying in a later
-        // task lets React render first, so e.g. an app window is on screen when show() resolves.
+        // task lets Preact render first, so e.g. an app window is on screen when show() resolves.
         Promise.resolve(result).then(result => setTimeout(() => {
           const response: FeatureActionResponseMessage = { type: 'FEATURE_ACTION_RESPONSE', action_id, payload: result };
           source.postMessage(response, '*');

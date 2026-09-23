@@ -18,7 +18,7 @@ Shopify embedded app testing solution - test locally without real credentials.
   - `src/testing/` - in-process host for unit tests (`createTestBridge`)
 - `src/vitest/` - Vitest setup file, `bridge` accessor, and the `mock-bridge` jsdom environment
 - `src/vite/` - `mockBridge()` plugin: wires up Vitest (jsdom or Browser Mode), and with `dev` runs the app inside the mock admin during `vite dev` (serve only, never builds)
-- `admin-frame/` - React mock admin; renders the shared stores from `src/core/stores.ts`
+- `admin-frame/` - Preact + signals mock admin; renders the shared stores from `src/core/stores.ts`
 
 The package is ESM (`"type": "module"`): `tsc` compiles `src/` to `dist/` (relative imports need `.js` extensions). CommonJS consumers can still `require()` it via Node's require(esm). `app-bridge/vite.config.ts` bundles the browser build (an IIFE) to `app-bridge/dist/index.js`. `src/vitest/tester.html` ships as source.
 
