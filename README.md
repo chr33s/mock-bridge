@@ -146,7 +146,7 @@ If you need more control, you can still use the programmatic API:
 
 ```javascript
 // scripts/start-mock-admin.js
-const { MockShopifyAdminServer } = require("@verdict/mock-bridge");
+import { MockShopifyAdminServer } from "@getverdict/mock-bridge";
 
 async function startMockAdmin() {
   const server = new MockShopifyAdminServer({

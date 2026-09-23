@@ -1,5 +1,5 @@
 // Shared by the jsdom and Browser Mode fixtures.
-import { bridge } from '../../../dist/vitest/index.mjs';
+import { bridge } from '../../../dist/vitest/index.js';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { loadFees, pickProduct, saveFee } from './app';
 

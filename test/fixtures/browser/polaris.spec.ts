@@ -1,4 +1,4 @@
-import { bridge } from '../../../dist/vitest/index.mjs';
+import { bridge } from '../../../dist/vitest/index.js';
 import { expect, it, vi } from 'vitest';
 
 it('renders Polaris web components alongside the mock', async () => {

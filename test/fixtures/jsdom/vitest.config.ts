@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import { mockBridge } from '../../../dist/vite/index.mjs';
+import { mockBridge } from '../../../dist/vite/index.js';
 
 export default defineConfig({
   plugins: [mockBridge({ shop: 'fixture.myshopify.com' })],

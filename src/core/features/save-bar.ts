@@ -1,5 +1,5 @@
 import type { ShopifyGlobal } from '@shopify/app-bridge-types';
-import { fire, observeElements, type FeatureContext } from './context';
+import { fire, observeElements, type FeatureContext } from './context.js';
 
 /** Mirrors `<ui-save-bar>` elements and `form[data-save-bar]` dirty state into the admin. */
 function observeSaveBarElements(ctx: FeatureContext) {

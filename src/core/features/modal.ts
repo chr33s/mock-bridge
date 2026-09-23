@@ -1,6 +1,6 @@
 import type { ShopifyGlobal } from '@shopify/app-bridge-types';
-import type { ModalContent } from '../stores';
-import { fire, observeElements, type FeatureContext } from './context';
+import type { ModalContent } from '../stores.js';
+import { fire, observeElements, type FeatureContext } from './context.js';
 
 /** Mirrors `<ui-modal>` elements into the admin, which renders them. */
 function observeModalElements(ctx: FeatureContext) {

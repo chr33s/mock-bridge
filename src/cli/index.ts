@@ -4,15 +4,16 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
-import { MockShopifyAdminServer } from '../server';
-import type { MockShopifyAdminConfig } from '../types';
-import { STANDARD_MOCK_SECRET, STANDARD_MOCK_CLIENT_ID } from '../auth/constants';
+import { pathToFileURL } from 'url';
+import { MockShopifyAdminServer } from '../server/index.js';
+import type { MockShopifyAdminConfig } from '../types/index.js';
+import { STANDARD_MOCK_SECRET, STANDARD_MOCK_CLIENT_ID } from '../auth/constants.js';
 
 const program = new Command();
 
 // Version from package.json
 const packageJson = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')
+  fs.readFileSync(path.join(import.meta.dirname, '../../package.json'), 'utf8')
 );
 
 interface CLIConfig extends Partial<MockShopifyAdminConfig> {
@@ -22,7 +23,7 @@ interface CLIConfig extends Partial<MockShopifyAdminConfig> {
 /**
  * Load configuration from file if provided
  */
-function loadConfigFile(configPath: string): Partial<MockShopifyAdminConfig> {
+async function loadConfigFile(configPath: string): Promise<Partial<MockShopifyAdminConfig>> {
   try {
     const fullPath = path.resolve(process.cwd(), configPath);
 
@@ -36,17 +37,16 @@ function loadConfigFile(configPath: string): Partial<MockShopifyAdminConfig> {
 
     if (ext === '.json') {
       config = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-    } else if (ext === '.js' || ext === '.mjs') {
-      // Dynamic import for ES modules
-      delete require.cache[fullPath];
-      const moduleExports = require(fullPath);
+    } else if (ext === '.js' || ext === '.mjs' || ext === '.cjs') {
+      // import() loads ES modules and CommonJS alike (module.exports arrives as `default`).
+      const moduleExports = await import(pathToFileURL(fullPath).href);
       config = moduleExports;
       if (moduleExports && typeof moduleExports === 'object' && 'default' in moduleExports) {
         config = moduleExports.default;
       }
     } else {
       console.error(chalk.red(`❌ Unsupported config file format: ${ext}`));
-      console.log(chalk.gray('Supported formats: .json, .js, .mjs'));
+      console.log(chalk.gray('Supported formats: .json, .js, .mjs, .cjs'));
       process.exit(1);
     }
 
@@ -135,7 +135,7 @@ async function startCommand(options: CLIConfig): Promise<void> {
     let config: Partial<MockShopifyAdminConfig> = {};
 
     if (options.config) {
-      config = loadConfigFile(options.config);
+      config = await loadConfigFile(options.config);
     } else {
       // Auto-detect configuration
       config = autoDetectConfig();
@@ -331,7 +331,7 @@ program
   .option('-i, --client-id <id>', 'Your Shopify app\'s client ID (optional, defaults to development ID)')
   .option('-s, --client-secret <secret>', 'Mock client secret (development only)')
   .option('--shop <domain>', 'Mock shop domain')
-  .option('--port <number>', 'Mock admin port', (val) => parseInt(val, 10), 3080)
+  .option('--port <number>', 'Mock admin port (default: 3080)', (val) => parseInt(val, 10))
   .option('-c, --config <file>', 'Path to configuration file')
   .option('-d, --debug', 'Enable debug logging', false)
   .option('--proxy', 'Proxy app through mock-bridge for same-origin iframe (enables Cypress support)', false)
@@ -351,7 +351,7 @@ program
   .option('-i, --client-id <id>', 'Your Shopify app\'s client ID (optional, defaults to development ID)')
   .option('-s, --client-secret <secret>', 'Mock client secret (development only)')
   .option('--shop <domain>', 'Mock shop domain')
-  .option('--port <number>', 'Mock admin port', (val) => parseInt(val, 10), 3080)
+  .option('--port <number>', 'Mock admin port (default: 3080)', (val) => parseInt(val, 10))
   .option('-c, --config <file>', 'Path to configuration file')
   .option('-d, --debug', 'Enable debug logging', false)
   .option('--proxy', 'Proxy app through mock-bridge for same-origin iframe (enables Cypress support)', false)
@@ -384,7 +384,7 @@ Environment Variables:
 
 Configuration File:
   Use 'npx mock-bridge init' to create a mock.config.js file
-  Supports: .js, .mjs, .json formats
+  Supports: .js, .mjs, .cjs, .json formats
 
 Shopify TOML Integration:
   Read application_url from shopify.app.toml and use it directly:

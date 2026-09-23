@@ -3,31 +3,31 @@ export {
   validateSessionToken,
   type AuthResult,
   type ValidateTokenOptions
-} from './validateSessionToken';
+} from './validateSessionToken.js';
 
 export {
   isMockToken,
   shouldEnableMockTokens
-} from './isMockToken';
+} from './isMockToken.js';
 
 export {
   STANDARD_MOCK_SECRET,
   STANDARD_MOCK_SHOP,
   STANDARD_MOCK_USER_ID
-} from './constants';
+} from './constants.js';
 
 export {
   createMockUser,
   createMockShopifyUser,
   type MockCurrentUser,
   type MockUserOptions
-} from './createMockUser';
+} from './createMockUser.js';
 
 export {
   withMockTokenSupport,
   withMockTokenMiddleware,
   type MockTokenHandlerOptions
-} from './withMockTokenSupport';
+} from './withMockTokenSupport.js';
 
 // Isomorphic (WebCrypto) session tokens
 export {
@@ -38,4 +38,4 @@ export {
   verifySessionToken,
   type SessionTokenPayload,
   type TokenGeneratorOptions
-} from './jwt';
+} from './jwt.js';

@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 
 const run = promisify(execFile);
-const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}/vitest.config.mts`, import.meta.url));
+const fixture = (name: string) => fileURLToPath(new URL(`./fixtures/${name}/vitest.config.ts`, import.meta.url));
 const vitest = fileURLToPath(new URL('../node_modules/vitest/vitest.mjs', import.meta.url));
 
 async function runFixture(name: string, env: Record<string, string> = {}) {
@@ -43,7 +43,7 @@ const online = await polarisReachable();
 
 describe('Vitest integration (built dist)', { timeout: 120_000 }, () => {
   it('dist is built', () => {
-    expect(existsSync(fileURLToPath(new URL('../dist/vite/index.mjs', import.meta.url))), 'run `npm run build:esm` first').toBe(true);
+    expect(existsSync(fileURLToPath(new URL('../dist/vite/index.js', import.meta.url))), 'run `npm run build:esm` first').toBe(true);
   });
 
   it('jsdom: installs a fresh bridge per test file', async () => {

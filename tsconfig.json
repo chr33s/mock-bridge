@@ -1,28 +1,19 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "node20",
-    "lib": ["ES2022", "DOM"],
+    "module": "nodenext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node", "@shopify/app-bridge-types"]
   },
   "include": ["src/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "src/core",
-    "src/testing",
-    "src/vite",
-    "src/vitest"
-  ]
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

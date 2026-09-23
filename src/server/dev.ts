@@ -1,4 +1,4 @@
-import { MockShopifyAdminServer } from ".";
+import { MockShopifyAdminServer } from "./index.js";
 
 const APP_URL = process.env.SHOPIFY_APP_URL;
 if (!APP_URL) throw new Error('SHOPIFY_APP_URL is not set');

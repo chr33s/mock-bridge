@@ -1,5 +1,5 @@
-import { validateSessionToken, AuthResult, ValidateTokenOptions } from './validateSessionToken';
-import { createMockUser, MockCurrentUser } from './createMockUser';
+import { validateSessionToken, AuthResult, ValidateTokenOptions } from './validateSessionToken.js';
+import { createMockUser, MockCurrentUser } from './createMockUser.js';
 
 export interface MockTokenHandlerOptions {
   /** Mock client secret (defaults to standard mock secret) */

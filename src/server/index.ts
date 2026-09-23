@@ -3,9 +3,9 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import path from 'path';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { TokenGenerator } from '../auth/token-generator';
-import { MockShopifyAdminConfig, MockShop, MockUser } from '../types';
-import { STANDARD_MOCK_CLIENT_ID, STANDARD_MOCK_SECRET } from '../auth/constants';
+import { TokenGenerator } from '../auth/token-generator.js';
+import { MockShopifyAdminConfig, MockShop, MockUser } from '../types/index.js';
+import { STANDARD_MOCK_CLIENT_ID, STANDARD_MOCK_SECRET } from '../auth/constants.js';
 
 export class MockShopifyAdminServer {
   private app: Express;
@@ -64,8 +64,8 @@ export class MockShopifyAdminServer {
     this.app.use(bodyParser.urlencoded({ extended: true }));
 
     // Serve static files from client directory
-    this.app.use('/static', express.static(path.join(__dirname, '../client')));
-    this.app.use(express.static(path.join(__dirname, '../../admin-frame/dist')));
+    this.app.use('/static', express.static(path.join(import.meta.dirname, '../client')));
+    this.app.use(express.static(path.join(import.meta.dirname, '../../admin-frame/dist')));
 
     // Mock Shopify Admin page with embedded app
     this.app.use('/admin/apps/:clientId', (req: Request, res: Response, next) => {
@@ -83,7 +83,7 @@ export class MockShopifyAdminServer {
       next();
     });
 
-    // this.app.use('/admin', express.static(path.join(__dirname, '../../admin-frame/dist')));
+    // this.app.use('/admin', express.static(path.join(import.meta.dirname, '../../admin-frame/dist')));
 
     // Debug logging
     if (this.config.debug) {
@@ -97,11 +97,11 @@ export class MockShopifyAdminServer {
   private setupRoutes(): void {
     // Serve logo images
     this.app.get('/logo', (req: Request, res: Response) => {
-      res.sendFile(path.join(__dirname, '../../assets/img/mock-bridge-logo-200px.jpg'));
+      res.sendFile(path.join(import.meta.dirname, '../../assets/img/mock-bridge-logo-200px.jpg'));
     });
 
     this.app.get('/favicon.ico', (req: Request, res: Response) => {
-      res.sendFile(path.join(__dirname, '../../assets/img/mock-bridge-logo-200px.jpg'));
+      res.sendFile(path.join(import.meta.dirname, '../../assets/img/mock-bridge-logo-200px.jpg'));
     });
 
     // Main admin route - serves the mock Shopify Admin page
@@ -205,7 +205,7 @@ export class MockShopifyAdminServer {
     // Mock app bridge script (served for embedded apps)
     this.app.get('/app-bridge.js', (req: Request, res: Response) => {
       res.type('application/javascript');
-      const srcPath = path.join(__dirname, '../../app-bridge/dist/index.js');
+      const srcPath = path.join(import.meta.dirname, '../../app-bridge/dist/index.js');
       res.sendFile(srcPath);
     });
 

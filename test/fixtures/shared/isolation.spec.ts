@@ -1,5 +1,5 @@
 // A second file: each test file gets a fresh bridge.
-import { bridge } from '../../../dist/vitest/index.mjs';
+import { bridge } from '../../../dist/vitest/index.js';
 import { expect, it } from 'vitest';
 import { loadFees } from './app';
 

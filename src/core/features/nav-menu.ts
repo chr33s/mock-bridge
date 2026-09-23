@@ -1,5 +1,5 @@
-import type { NavItem } from '../stores';
-import { fire, observeElements, type FeatureContext } from './context';
+import type { NavItem } from '../stores.js';
+import { fire, observeElements, type FeatureContext } from './context.js';
 
 const NAV_MENU_SELECTORS = ['ui-nav-menu', 'nav-menu', 's-app-nav'];
 

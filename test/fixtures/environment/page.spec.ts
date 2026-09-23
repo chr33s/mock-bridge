@@ -1,4 +1,4 @@
-import { bridge } from '../../../dist/vitest/index.mjs';
+import { bridge } from '../../../dist/vitest/index.js';
 import { expect, it } from 'vitest';
 
 it('installs shopify before the page parses, so page scripts can use it', () => {

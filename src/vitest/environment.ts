@@ -5,8 +5,8 @@
  */
 import type { DOMWindow } from 'jsdom';
 import { builtinEnvironments, type Environment } from 'vitest/runtime';
-import { createTestBridge } from '../testing';
-import { BRIDGE_KEY, type MockBridgeEnvironmentOptions } from './index';
+import { createTestBridge } from '../testing/index.js';
+import { BRIDGE_KEY, type MockBridgeEnvironmentOptions } from './index.js';
 
 const STUB = '/* @getverdict/mock-bridge: window.shopify is provided by the test environment */';
 

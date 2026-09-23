@@ -2,6 +2,7 @@
   "name": "@getverdict/mock-bridge",
   "version": "1.3.0",
   "description": "Mock Shopify App Bridge for testing and development",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -19,23 +20,23 @@
     },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
-      "import": "./dist/testing/index.mjs"
+      "default": "./dist/testing/index.js"
     },
     "./vite": {
       "types": "./dist/vite/index.d.ts",
-      "import": "./dist/vite/index.mjs"
+      "default": "./dist/vite/index.js"
     },
     "./vitest": {
       "types": "./dist/vitest/index.d.ts",
-      "import": "./dist/vitest/index.mjs"
+      "default": "./dist/vitest/index.js"
     },
     "./vitest/setup": {
       "types": "./dist/vitest/setup.d.ts",
-      "import": "./dist/vitest/setup.mjs"
+      "default": "./dist/vitest/setup.js"
     },
     "./vitest/environment": {
       "types": "./dist/vitest/environment.d.ts",
-      "import": "./dist/vitest/environment.mjs"
+      "default": "./dist/vitest/environment.js"
     },
     "./app-bridge.js": "./app-bridge/dist/index.js",
     "./dist/*": "./dist/*",
@@ -45,14 +46,13 @@
     "mock-bridge": "dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc && npm run build:esm && npm run build:admin-frame && npm run build:app-bridge",
-    "build:esm": "tsc -p tsconfig.esm.json && node scripts/build.mjs esm",
+    "build": "npm run clean && tsc && npm run build:admin-frame && npm run build:app-bridge",
     "build:admin-frame": "cd admin-frame && npm run build",
-    "build:app-bridge": "node scripts/build.mjs app-bridge",
+    "build:app-bridge": "vite build --config app-bridge/vite.config.ts",
     "test": "npm run build && vitest run",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.esm.json --emitDeclarationOnly false && tsc --noEmit -p app-bridge",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p app-bridge",
     "dev": "concurrently \"tsc --watch --preserveWatchOutput\" \"node --watch --env-file-if-exists=.env dist/server/dev.js\" \"npm run dev:app-bridge\" \"npm run dev:admin-frame\"",
-    "dev:app-bridge": "node scripts/build.mjs app-bridge --watch",
+    "dev:app-bridge": "vite build --watch --config app-bridge/vite.config.ts",
     "dev:admin-frame": "cd admin-frame && npm run dev",
     "start": "node dist/server/index.js",
     "watch": "tsc --watch",
@@ -123,7 +123,8 @@
   "files": [
     "dist/",
     "admin-frame/dist/",
-    "app-bridge/dist/"
+    "app-bridge/dist/",
+    "src/vitest/tester.html"
   ],
   "publishConfig": {
     "access": "public"

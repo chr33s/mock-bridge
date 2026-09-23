@@ -1,10 +1,10 @@
 import type { ShopifyGlobal } from '@shopify/app-bridge-types';
-import type { BridgeHost } from './protocol';
-import { fire, type BridgeWindow, type FeatureContext } from './features/context';
-import { modal } from './features/modal';
-import { navMenu } from './features/nav-menu';
-import { saveBar } from './features/save-bar';
-import { app, intents, picker, pos, reviews, scanner, scopes, shopifyQL, support, tools, user, webVitals } from './features/stubs';
+import type { BridgeHost } from './protocol.js';
+import { fire, type BridgeWindow, type FeatureContext } from './features/context.js';
+import { modal } from './features/modal.js';
+import { navMenu } from './features/nav-menu.js';
+import { saveBar } from './features/save-bar.js';
+import { app, intents, picker, pos, reviews, scanner, scopes, shopifyQL, support, tools, user, webVitals } from './features/stubs.js';
 
 export interface CreateShopifyOptions {
   /** The window whose DOM is observed for `<ui-modal>`, `<ui-save-bar>` and `<ui-nav-menu>`. */

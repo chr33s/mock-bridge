@@ -1,4 +1,4 @@
-import { verifyJwt, type SessionTokenPayload } from './jwt';
+import { verifyJwt, type SessionTokenPayload } from './jwt.js';
 
 export interface AuthResult {
   /** Whether this is a mock token */

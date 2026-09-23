@@ -17,14 +17,14 @@ describe('mockBridge()', () => {
   it('adds the setup file, options and jsdom under Vitest', async () => {
     const result = await config(mockBridge({ shop: 'a.myshopify.com', scripts: { 'x.js': null } }));
 
-    expect(result?.test?.setupFiles).toEqual([expect.stringMatching(/vitest\/setup\.mjs$/)]);
+    expect(result?.test?.setupFiles).toEqual([expect.stringMatching(/vitest\/setup\.js$/)]);
     expect(result?.test?.environment).toBe('jsdom');
     expect(result?.test?.provide).toEqual({ mockBridge: { shop: 'a.myshopify.com' } });
     expect(result?.test?.environmentOptions).toEqual({ mockBridge: { shop: 'a.myshopify.com', scripts: { 'x.js': null } } });
   });
 
   it('uses the mock-bridge environment by absolute path', async () => {
-    expect((await config(mockBridge({ environment: 'mock-bridge' })))?.test?.environment).toMatch(/^\/.*vitest\/environment\.mjs$/);
+    expect((await config(mockBridge({ environment: 'mock-bridge' })))?.test?.environment).toMatch(/^\/.*vitest\/environment\.js$/);
   });
 
   it("leaves the user's environment and Browser Mode alone", async () => {

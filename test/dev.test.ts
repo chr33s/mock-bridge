@@ -7,7 +7,7 @@ import type { ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const root = fileURLToPath(new URL('./fixtures/dev-app', import.meta.url));
-const pluginPath = fileURLToPath(new URL('../dist/vite/index.mjs', import.meta.url));
+const pluginPath = fileURLToPath(new URL('../dist/vite/index.js', import.meta.url));
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {

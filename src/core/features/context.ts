@@ -1,4 +1,4 @@
-import type { BridgeHost } from '../protocol';
+import type { BridgeHost } from '../protocol.js';
 
 export type BridgeWindow = Window & typeof globalThis;
 

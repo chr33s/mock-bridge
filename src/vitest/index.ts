@@ -1,6 +1,6 @@
-import type { TestBridge, TestBridgeOptions } from '../testing';
+import type { TestBridge, TestBridgeOptions } from '../testing/index.js';
 
-export { createTestBridge } from '../testing';
+export { createTestBridge } from '../testing/index.js';
 export type {
   AdminHandler,
   AdminRequest,
@@ -11,7 +11,7 @@ export type {
   TestBridge,
   TestBridgeOptions,
   Toast,
-} from '../testing';
+} from '../testing/index.js';
 
 /** Options the environment reads from `environmentOptions.mockBridge`. */
 export interface MockBridgeEnvironmentOptions extends TestBridgeOptions {

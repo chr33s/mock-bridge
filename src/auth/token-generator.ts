@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-import type { SessionTokenPayload, TokenGeneratorOptions } from './jwt';
+import type { SessionTokenPayload, TokenGeneratorOptions } from './jwt.js';
 
 export type { SessionTokenPayload, TokenGeneratorOptions };
 

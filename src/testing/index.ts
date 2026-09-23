@@ -1,10 +1,10 @@
 import type { ShopifyGlobal } from '@shopify/app-bridge-types';
-import { STANDARD_MOCK_CLIENT_ID, STANDARD_MOCK_SECRET } from '../auth/constants';
-import { signSessionToken } from '../auth/jwt';
-import { createShopify } from '../core/create-shopify';
-import type { BridgeWindow } from '../core/features/context';
-import { patchFetch } from '../core/fetch';
-import type { AdminFetchRequest, BridgeHost } from '../core/protocol';
+import { STANDARD_MOCK_CLIENT_ID, STANDARD_MOCK_SECRET } from '../auth/constants.js';
+import { signSessionToken } from '../auth/jwt.js';
+import { createShopify } from '../core/create-shopify.js';
+import type { BridgeWindow } from '../core/features/context.js';
+import { patchFetch } from '../core/fetch.js';
+import type { AdminFetchRequest, BridgeHost } from '../core/protocol.js';
 import {
   createFeatureStores,
   resetFeatureStores,
@@ -14,10 +14,10 @@ import {
   type NavItem,
   type SaveBarState,
   type Toast,
-} from '../core/stores';
+} from '../core/stores.js';
 
-export type { FeatureStores, ModalState, NavItem, SaveBarState, Toast } from '../core/stores';
-export type { BridgeHost } from '../core/protocol';
+export type { FeatureStores, ModalState, NavItem, SaveBarState, Toast } from '../core/stores.js';
+export type { BridgeHost } from '../core/protocol.js';
 
 export interface TestBridgeOptions {
   /** @default 'test-shop.myshopify.com' */
