@@ -1,7 +1,9 @@
+import type { Config } from "../hooks/useConfig";
 import { useMockBridge } from "../hooks/useMockBridge";
+import { APP_SANDBOX } from "../lib/app";
 
-export function EmbeddedApp() {
-  const { iframeRef, iframeSrc } = useMockBridge();
+export function EmbeddedApp({ config, entry }: { config: Config; entry: string }) {
+  const { iframeRef, iframeSrc } = useMockBridge(config, entry);
 
   if (!iframeSrc) return null;
 
@@ -12,7 +14,7 @@ export function EmbeddedApp() {
       src={iframeSrc}
       style={{ width: '100%', height: '100%', border: 'none' }}
       allow="clipboard-write"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+      sandbox={APP_SANDBOX}
     />
   )
 }

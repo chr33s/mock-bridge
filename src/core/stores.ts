@@ -49,6 +49,43 @@ export type Toast = {
   action?: string;
 };
 
+export type NavigationEntry =
+  /** The app changed its own URL (`history.pushState`/`replaceState`, back/forward or a page load). */
+  | { type: 'history'; url: string; replace: boolean }
+  /** The app sent the merchant to an admin page, e.g. `shopify://admin/products` is `/products`. */
+  | { type: 'admin'; path: string; newContext: boolean }
+  /** The app opened a URL outside itself, e.g. `window.open(url, '_blank')` or a `target="_top"` link. */
+  | { type: 'open'; url: string; target: string };
+
+export type NavigationState = {
+  /** The app's URL, without the admin's `host`/`shop`/`embedded`/`id_token` parameters. */
+  url: string | null;
+  /** The admin page showing instead of the app, or `null` while the app shows. */
+  adminPath: string | null;
+  /** Every navigation, in order. */
+  entries: NavigationEntry[];
+};
+
+export type AppWindowState = {
+  id: string;
+  /** The window's page, resolved against the app's URL. */
+  src: string | null;
+  open: boolean;
+};
+
+export type ShareRequest = {
+  title?: string;
+  text?: string;
+  url?: string;
+  /** Files can't cross to the admin; only their descriptions do. */
+  files?: Array<{ name: string; type: string; size: number }>;
+};
+
+export type ShareOutcome = 'shared' | 'cancelled';
+
+/** Sends an event to the app, e.g. `emit('appWindow', 'hide', { id })`. */
+export type FeatureEmitter = (feature: string, event: string, payload?: unknown) => void;
+
 function createModalStore() {
   const emptyModal = (id: string): ModalState => ({
     open: false,
@@ -138,7 +175,97 @@ function createResourcePickerStore() {
   ));
 }
 
-export function createFeatureStores() {
+function createNavigationStore(emit: FeatureEmitter) {
+  return createStore(combine(
+    { url: null, adminPath: null, entries: [] } as NavigationState,
+    set => {
+      const record = (entry: NavigationEntry, change: Partial<NavigationState> = {}) =>
+        set(state => ({ ...change, entries: [...state.entries, entry] }));
+
+      return {
+        sync: (payload: { url: string; replace: boolean }) =>
+          record({ type: 'history', ...payload }, { url: payload.url }),
+        admin: (payload: { path: string; newContext?: boolean }) => {
+          const newContext = payload.newContext ?? false;
+          record({ type: 'admin', path: payload.path, newContext }, newContext ? {} : { adminPath: payload.path });
+        },
+        open: (payload: { url: string; target: string }) => record({ type: 'open', ...payload }),
+        /** The merchant picked an app nav menu item in the admin. */
+        navigate: (payload: { href: string }) => emit('navigation', 'navigate', payload),
+      };
+    },
+  ));
+}
+
+function createAppWindowStore(emit: FeatureEmitter) {
+  return createStore(combine(
+    { appWindows: {} as Record<string, AppWindowState> },
+    (set, get) => {
+      const patch = (id: string, change: Partial<AppWindowState>) => set(state => {
+        const appWindow = state.appWindows[id] ?? { id, src: null, open: false };
+        return { appWindows: { ...state.appWindows, [id]: { ...appWindow, ...change } } };
+      });
+      const setOpen = (id: string, open: boolean) => {
+        if ((get().appWindows[id]?.open ?? false) === open) return;
+        patch(id, { open });
+        emit('appWindow', open ? 'show' : 'hide', { id });
+      };
+
+      return {
+        update: (payload: { id: string; src: string | null }) => patch(payload.id, { src: payload.src }),
+        show: (payload: { id: string }) => setOpen(payload.id, true),
+        hide: (payload: { id: string }) => setOpen(payload.id, false),
+        toggle: (payload: { id: string }) => setOpen(payload.id, !get().appWindows[payload.id]?.open),
+      };
+    },
+  ));
+}
+
+function createShareStore() {
+  let settle: ((outcome: ShareOutcome) => void) | undefined;
+
+  return createStore(combine(
+    {
+      /** The share sheet showing in the admin. */
+      current: null as ShareRequest | null,
+      /** Answers every share straight away instead of showing the sheet. */
+      outcome: undefined as ShareOutcome | undefined,
+    },
+    (set, get) => ({
+      share: (payload: ShareRequest): ShareOutcome | Promise<ShareOutcome> => {
+        const { outcome } = get();
+        if (outcome) return outcome;
+        settle?.('cancelled');
+        set({ current: payload });
+        return new Promise(resolve => { settle = resolve; });
+      },
+      /** The merchant shared or dismissed the sheet. */
+      settle: (payload: { outcome: ShareOutcome }) => {
+        settle?.(payload.outcome);
+        settle = undefined;
+        set({ current: null });
+      },
+      setOutcome: (payload: { outcome: ShareOutcome | undefined }) => set({ outcome: payload.outcome }),
+    }),
+  ));
+}
+
+function createPrintStore() {
+  return createStore(combine(
+    { count: 0 },
+    set => ({
+      print: () => set(state => ({ count: state.count + 1 })),
+    }),
+  ));
+}
+
+export interface FeatureStoresOptions {
+  /** Delivers admin events to the app. */
+  emit?: FeatureEmitter;
+}
+
+export function createFeatureStores(options: FeatureStoresOptions = {}) {
+  const emit = options.emit ?? (() => {});
   return {
     modal: createModalStore(),
     loading: createLoadingStore(),
@@ -146,6 +273,10 @@ export function createFeatureStores() {
     navMenu: createNavMenuStore(),
     toast: createToastStore(),
     resourcePicker: createResourcePickerStore(),
+    navigation: createNavigationStore(emit),
+    appWindow: createAppWindowStore(emit),
+    share: createShareStore(),
+    print: createPrintStore(),
   };
 }
 

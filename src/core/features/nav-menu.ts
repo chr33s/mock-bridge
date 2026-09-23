@@ -25,11 +25,4 @@ export function navMenu(ctx: FeatureContext) {
     observer.observe(menu, { childList: true, subtree: true, characterData: true });
     ctx.signal.addEventListener('abort', () => observer.disconnect());
   });
-
-  // Clicks in the admin sidebar navigate within the app.
-  window.addEventListener('message', event => {
-    if (event.data?.type === 'NAV_MENU_CLICK' && event.data.href) {
-      window.location.href = event.data.href;
-    }
-  }, { signal: ctx.signal });
 }

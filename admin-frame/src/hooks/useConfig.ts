@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 type AdminApiConfig = 'mock' | { proxy: string } | { accessToken: string };
 
-interface Config {
+export interface Config {
   clientId: string;
   shop: string;
   host: string;

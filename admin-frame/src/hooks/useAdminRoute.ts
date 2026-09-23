@@ -1,0 +1,82 @@
+import { useCallback, useEffect, useState } from "react";
+import { appPath } from "../lib/app";
+import { stores } from "../store/features";
+import type { Config } from "./useConfig";
+
+type AppRoute = {
+  /** Where the app loads, relative to its URL. */
+  entry: string;
+  /** Changes whenever the app reloads at a new entry. */
+  key: number;
+};
+
+export const adminUrl = (path: string) => (path === '/' ? '/admin' : `/admin${path}`);
+
+/**
+ * Keeps the admin's URL and what it shows in step: `/admin/apps/<client id>/<path>` is the
+ * app at `<path>`, other `/admin/...` URLs are admin pages. The app's own history entries
+ * live in its iframe, so the admin only mirrors the app's URL; admin pages get entries of their own.
+ */
+export function useAdminRoute(config: Config | null) {
+  const [route, setRoute] = useState<AppRoute | null>(null);
+  const appsPrefix = config ? `/admin/apps/${config.clientId}` : '';
+
+  const showApp = useCallback((entry: string) => {
+    stores.navigation.setState({ adminPath: null });
+    setRoute(current => ({ entry, key: (current?.key ?? 0) + 1 }));
+  }, []);
+
+  // The initial URL, and back/forward between the app and admin pages.
+  useEffect(() => {
+    if (!config) return;
+
+    const apply = () => {
+      const { pathname, search, hash } = location;
+      if (pathname === appsPrefix || pathname.startsWith(`${appsPrefix}/`)) {
+        showApp(pathname.slice(appsPrefix.length) + search + hash);
+      } else if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+        stores.navigation.setState({ adminPath: (pathname.slice('/admin'.length) || '/') + search + hash });
+      } else {
+        showApp(config.appPath ?? '');
+      }
+    };
+
+    apply();
+    window.addEventListener('popstate', apply);
+    return () => window.removeEventListener('popstate', apply);
+  }, [config, appsPrefix, showApp]);
+
+  useEffect(() => {
+    if (!config) return;
+
+    return stores.navigation.subscribe((state, previous) => {
+      const entry = state.entries.length > previous.entries.length ? state.entries[state.entries.length - 1] : undefined;
+      if (entry?.type === 'admin' && entry.newContext) {
+        window.open(adminUrl(entry.path), '_blank');
+      }
+
+      if (state.adminPath !== null && state.adminPath !== previous.adminPath) {
+        const url = adminUrl(state.adminPath);
+        if (url !== location.pathname + location.search + location.hash) history.pushState(null, '', url);
+      } else if (state.adminPath === null && state.url && state.url !== previous.url) {
+        const path = appPath(config, state.url);
+        if (path !== null) history.replaceState(null, '', `${appsPrefix}${path}`);
+      }
+    });
+  }, [config, appsPrefix]);
+
+  /** Follows an app nav menu item: the showing app routes it, otherwise the app loads there. */
+  const navigateApp = useCallback((href: string) => {
+    if (!config) return;
+    const { adminPath, url, navigate } = stores.navigation.getState();
+    if (adminPath === null) {
+      navigate({ href });
+      return;
+    }
+    const path = appPath(config, new URL(href, url ?? location.href).href) ?? href;
+    history.pushState(null, '', `${appsPrefix}${path}`);
+    showApp(path);
+  }, [config, appsPrefix, showApp]);
+
+  return { route, navigateApp };
+}

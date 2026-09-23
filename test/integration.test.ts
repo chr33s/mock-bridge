@@ -47,7 +47,7 @@ describe('Vitest integration (built dist)', { timeout: 120_000 }, () => {
   });
 
   it('jsdom: installs a fresh bridge per test file', async () => {
-    expect(await runFixture('jsdom')).toMatch(/Tests\s+6 passed/);
+    expect(await runFixture('jsdom')).toMatch(/Tests\s+7 passed/);
   });
 
   it('mock-bridge environment: page scripts see window.shopify', async () => {
@@ -56,6 +56,6 @@ describe('Vitest integration (built dist)', { timeout: 120_000 }, () => {
 
   it.skipIf(!chromiumInstalled)('Browser Mode: the same tests pass in Chromium, with real Polaris', async () => {
     const output = await runFixture('browser', online ? {} : { MOCK_BRIDGE_OFFLINE: '1' });
-    expect(output).toMatch(online ? /Tests\s+7 passed/ : /Tests\s+6 passed/);
+    expect(output).toMatch(online ? /Tests\s+8 passed/ : /Tests\s+7 passed/);
   });
 });

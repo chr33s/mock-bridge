@@ -116,6 +116,84 @@ describe('createTestBridge', () => {
     await vi.waitFor(() => expect(bridge.modal('help')?.open).toBe(true));
   });
 
+  it('follows the app history and sends shopify://admin links to the admin', async () => {
+    history.pushState(null, '', '/fees?embedded=1&host=abc&tab=all');
+    expect(bridge.navigation().url).toBe('http://localhost:3000/fees?tab=all');
+
+    document.body.innerHTML = '<a href="shopify://admin/products?selectedView=all">Products</a><a href="https://example.com" target="_top">Out</a>';
+    const [admin, out] = document.querySelectorAll('a');
+    expect(admin.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))).toBe(false);
+    out.click();
+    expect(window.open('shopify:admin/orders', '_blank')).toBeNull();
+    expect(window.open('/report.pdf')).toBeNull();
+
+    expect(bridge.navigation().adminPath).toBe('/products?selectedView=all');
+    expect(bridge.navigation().entries.slice(-4)).toEqual([
+      { type: 'admin', path: '/products?selectedView=all', newContext: false },
+      { type: 'open', url: 'https://example.com/', target: '_top' },
+      { type: 'admin', path: '/orders', newContext: true },
+      { type: 'open', url: 'http://localhost:3000/report.pdf', target: '_blank' },
+    ]);
+  });
+
+  it('follows the app\'s nav menu links when the merchant picks an admin nav item', async () => {
+    document.body.innerHTML = `
+      <ui-nav-menu><a href="/fees">Fees</a></ui-nav-menu>
+      <s-app-nav><s-link href="/rules">Rules</s-link></s-app-nav>`;
+    const clicked = vi.fn((event: Event) => event.preventDefault());
+    const navigated = vi.fn((event: Event) => (event.target as Element).getAttribute('href'));
+    document.querySelector('a')!.addEventListener('click', clicked);
+    document.addEventListener('shopify:navigate', navigated);
+
+    bridge.navigate('/fees');
+    bridge.navigate('/rules');
+
+    expect(clicked).toHaveBeenCalledOnce();
+    expect(navigated).toHaveReturnedWith('/rules');
+    document.removeEventListener('shopify:navigate', navigated);
+  });
+
+  it('records window.print() without opening the print dialog', () => {
+    window.print();
+    window.print();
+    expect(bridge.prints()).toBe(2);
+  });
+
+  it('answers navigator.share() and rejects cancelled or empty shares', async () => {
+    await expect(navigator.share({ title: 'Fee', url: '/fees/1' })).resolves.toBeUndefined();
+    expect(bridge.shares()).toEqual([{ title: 'Fee', url: 'http://localhost:3000/fees/1' }]);
+
+    bridge.shareResult('cancelled');
+    await expect(navigator.share({ text: 'hi' })).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(navigator.share({})).rejects.toThrow(TypeError);
+    expect(navigator.canShare({ url: '/x' })).toBe(true);
+    expect(navigator.canShare({})).toBe(false);
+  });
+
+  it('mirrors <s-app-window> and opens it from invoker commands', async () => {
+    document.body.innerHTML = `
+      <s-app-window id="editor" src="/editor"></s-app-window>
+      <button commandfor="editor" command="--toggle">Edit</button>`;
+    const appWindow = document.getElementById('editor') as unknown as SAppWindowElement;
+    await vi.waitFor(() => expect(bridge.appWindow('editor')).toEqual({ id: 'editor', src: 'http://localhost:3000/editor', open: false }));
+
+    const events: string[] = [];
+    for (const type of ['show', 'hide'] as const) appWindow.addEventListener?.(type, () => events.push(type));
+
+    await appWindow.show?.();
+    expect(bridge.appWindow('editor')?.open).toBe(true);
+
+    appWindow.src = '/editor/2';
+    expect(bridge.appWindow('editor')?.src).toBe('http://localhost:3000/editor/2');
+
+    // The merchant closes the window in the admin.
+    bridge.stores.appWindow.getState().hide({ id: 'editor' });
+    document.querySelector('button')!.click();
+    await vi.waitFor(() => expect(bridge.appWindow('editor')?.open).toBe(true));
+    expect(events).toEqual(['show', 'hide', 'show']);
+    expect(appWindow.contentWindow).toBeNull();
+  });
+
   it('reset() clears state and restores handlers to the checkpoint', async () => {
     bridge.graphql('Kept', () => ({ data: {} }));
     bridge.checkpoint();
@@ -135,5 +213,14 @@ describe('createTestBridge', () => {
     uninstall();
     expect(globalThis.fetch).toBe(realFetch);
     expect('shopify' in globalThis).toBe(false);
+  });
+
+  it('dispose restores the patched window APIs', () => {
+    const patched = { open: window.open, print: window.print, pushState: history.pushState, share: navigator.share };
+    bridge.dispose();
+    expect(window.open).not.toBe(patched.open);
+    expect(window.print).not.toBe(patched.print);
+    expect(history.pushState).toBe(History.prototype.pushState);
+    expect(navigator.share).toBeUndefined();
   });
 });

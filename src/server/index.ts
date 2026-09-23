@@ -72,11 +72,11 @@ export class MockShopifyAdminServer {
       // const { host, shop } = req.query;
 
       // Set CSP header to allow iframe embedding
-      const frameSrc = this.config.proxy ? `'self'` : `'self' ${this.config.appUrl}`;
+      const frameSrc = this.config.proxy ? `'self'` : `'self' ${new URL(this.config.appUrl).origin}`;
       res.setHeader('Content-Security-Policy',
         `frame-src ${frameSrc}; ` +
         `frame-ancestors 'self' localhost:*; ` +
-        `script-src 'self' 'unsafe-inline' 'unsafe-eval';`
+        `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.shopify.com;`
       );
 
       // res.send(this.getAdminHTML(host as string, shop as string));
@@ -225,6 +225,11 @@ export class MockShopifyAdminServer {
         },
       }));
     }
+
+    // The admin's pages and deep links into the app (/admin/apps/<client id>/<app path>) route client-side.
+    this.app.get(/^\/admin(?:\/(?!api\/|oauth\/).*)?$/, (req: Request, res: Response) => {
+      res.sendFile(path.join(import.meta.dirname, '../../admin-frame/dist/index.html'));
+    });
 
     // Catch-all for undefined routes
     // Express 5 has no '*' path; a pathless middleware catches everything left.

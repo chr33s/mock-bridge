@@ -3,6 +3,8 @@ import { stores, type NavItem } from "../store/features";
 
 type Props = {
   children: React.ReactNode;
+  /** Follows an item of the app's nav menu. */
+  onNavigateApp: (href: string) => void;
 }
 
 // Default Shopify admin navigation items
@@ -17,8 +19,12 @@ const defaultNavItems: NavItem[] = [
   { label: 'Discounts', href: '/discounts' },
 ];
 
-export function Frame({ children }: Props) {
+const pathOf = (href: string, base: string) => new URL(href, base).pathname;
+
+export function Frame({ children, onNavigateApp }: Props) {
   const appNavItems = useStore(stores.navMenu, state => state.items);
+  const adminPath = useStore(stores.navigation, state => state.adminPath);
+  const appUrl = useStore(stores.navigation, state => state.url);
 
   // Use app nav items if provided, otherwise show default Shopify admin nav
   const hasAppNav = appNavItems.length > 0;
@@ -58,7 +64,8 @@ export function Frame({ children }: Props) {
             {defaultNavItems.map((item, index) => (
               <s-button
                 key={`default-${index}`}
-                variant="tertiary"
+                variant={adminPath !== null && pathOf(adminPath, location.origin) === item.href ? 'secondary' : 'tertiary'}
+                onClick={() => stores.navigation.setState({ adminPath: item.href })}
               >
                 {item.label}
               </s-button>
@@ -76,15 +83,8 @@ export function Frame({ children }: Props) {
                 {appNavItems.map((item, index) => (
                   <s-button
                     key={`app-${index}`}
-                    variant="tertiary"
-                    onClick={() => {
-                      // Send navigation message to iframe
-                      const iframe = document.getElementById('app-iframe') as HTMLIFrameElement;
-                      iframe?.contentWindow?.postMessage({
-                        type: 'NAV_MENU_CLICK',
-                        href: item.href,
-                      }, '*');
-                    }}
+                    variant={adminPath === null && appUrl && pathOf(item.href, appUrl) === pathOf(appUrl, appUrl) ? 'secondary' : 'tertiary'}
+                    onClick={() => onNavigateApp(item.href)}
                   >
                     {item.label}
                   </s-button>

@@ -4,19 +4,34 @@ import { signSessionToken } from '../auth/jwt.js';
 import { createShopify } from '../core/create-shopify.js';
 import type { BridgeWindow } from '../core/features/context.js';
 import { patchFetch } from '../core/fetch.js';
-import type { AdminFetchRequest, BridgeHost } from '../core/protocol.js';
+import type { AdminFetchRequest, BridgeHost, FeatureEvent } from '../core/protocol.js';
 import {
   createFeatureStores,
   resetFeatureStores,
   runFeatureAction,
+  type AppWindowState,
   type FeatureStores,
   type ModalState,
+  type NavigationState,
   type NavItem,
   type SaveBarState,
+  type ShareOutcome,
+  type ShareRequest,
   type Toast,
 } from '../core/stores.js';
 
-export type { FeatureStores, ModalState, NavItem, SaveBarState, Toast } from '../core/stores.js';
+export type {
+  AppWindowState,
+  FeatureStores,
+  ModalState,
+  NavigationEntry,
+  NavigationState,
+  NavItem,
+  SaveBarState,
+  ShareOutcome,
+  ShareRequest,
+  Toast,
+} from '../core/stores.js';
 export type { BridgeHost } from '../core/protocol.js';
 
 export interface TestBridgeOptions {
@@ -76,6 +91,8 @@ export interface TestBridge {
   rest(method: string, path: string | RegExp, handler: AdminHandler): void;
   /** What `shopify.resourcePicker` resolves to; `undefined` simulates cancelling. */
   resourcePicker(selection: unknown[] | undefined): void;
+  /** How the merchant answers `navigator.share()`: `'cancelled'` rejects it with an `AbortError`. */
+  shareResult(outcome: ShareOutcome): void;
 
   /** Toasts shown so far, including hidden ones. */
   toasts(): Toast[];
@@ -83,6 +100,15 @@ export interface TestBridge {
   modal(id: string): ModalState | undefined;
   navMenu(): NavItem[];
   loading(): boolean;
+  /** The app's URL, the admin page the app sent the merchant to, and every navigation. */
+  navigation(): NavigationState;
+  appWindow(id: string): AppWindowState | undefined;
+  /** `navigator.share()` calls so far. */
+  shares(): ShareRequest[];
+  /** How many times the app called `window.print()`. */
+  prints(): number;
+  /** Picks an item in the admin's nav menu, which the app follows like a click on its link. */
+  navigate(href: string): void;
   idToken(): Promise<string>;
 
   /** Keeps the current handlers across `reset()` (like msw's initial handlers). */
@@ -116,6 +142,7 @@ type Handlers = {
   graphql: Map<string, AdminHandler>;
   rest: Array<{ method: string; path: string | RegExp; handler: AdminHandler }>;
   selection: unknown[] | undefined;
+  shareOutcome: ShareOutcome;
 };
 
 /** An in-process App Bridge host for unit tests: no admin frame, no server. */
@@ -130,13 +157,24 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
     ...Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)),
   };
 
-  const stores = createFeatureStores();
+  const listeners = new Set<(event: FeatureEvent) => void>();
+  const stores = createFeatureStores({
+    emit: (feature, event, payload) => listeners.forEach(listener => listener({ feature, event, payload })),
+  });
   const calls: FeatureCall[] = [];
   const adminRequests: AdminRequest[] = [];
   let controller: AbortController | undefined;
-  let handlers: Handlers = { graphql: new Map(), rest: [], selection: [] };
-  let baseline: Handlers = { graphql: new Map(), rest: [], selection: [] };
+  const emptyHandlers = (): Handlers => ({ graphql: new Map(), rest: [], selection: [], shareOutcome: 'shared' });
+  let handlers = emptyHandlers();
+  let baseline = emptyHandlers();
   let shopify: ShopifyGlobal | undefined;
+
+  // Answers the admin's interactive features the way the handlers say to.
+  function applyAnswers() {
+    stores.resourcePicker.getState().setSelection({ selection: handlers.selection });
+    stores.share.getState().setOutcome({ outcome: handlers.shareOutcome });
+  }
+  applyAnswers();
 
   function answer(request: AdminRequest): AdminHandler {
     if (request.url.includes('graphql.json')) {
@@ -159,6 +197,10 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
     async invoke(feature, action, payload) {
       calls.push({ feature, action, payload });
       return runFeatureAction(stores, feature, action, payload).result;
+    },
+    listen(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     idToken: () => signSessionToken({
       shop: resolved.shop,
@@ -185,7 +227,7 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
     },
   };
 
-  const copy = (from: Handlers): Handlers => ({ graphql: new Map(from.graphql), rest: [...from.rest], selection: from.selection });
+  const copy = (from: Handlers): Handlers => ({ ...from, graphql: new Map(from.graphql), rest: [...from.rest] });
 
   const bridge: TestBridge = {
     options: resolved,
@@ -203,7 +245,8 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
       if (!shopify) {
         // The window's own AbortController: jsdom rejects signals from another realm.
         controller = new (win.AbortController ?? AbortController)();
-        shopify = createShopify(host, { window: win, signal: controller.signal });
+        // Printing and opening windows are only recorded.
+        shopify = createShopify(host, { window: win, signal: controller.signal, native: false });
       }
       win.shopify = shopify;
       const restoreFetch = patchFetch(win, host);
@@ -223,6 +266,10 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
       handlers.selection = selection;
       stores.resourcePicker.getState().setSelection({ selection });
     },
+    shareResult(outcome) {
+      handlers.shareOutcome = outcome;
+      stores.share.getState().setOutcome({ outcome });
+    },
 
     toasts: () => calls
       .filter(call => call.feature === 'toast' && call.action === 'show')
@@ -231,6 +278,13 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
     modal: id => stores.modal.getState().modalStates[id],
     navMenu: () => stores.navMenu.getState().items,
     loading: () => stores.loading.getState().isLoading,
+    navigation: () => stores.navigation.getState(),
+    appWindow: id => stores.appWindow.getState().appWindows[id],
+    shares: () => calls
+      .filter(call => call.feature === 'share' && call.action === 'share')
+      .map(call => call.payload as ShareRequest),
+    prints: () => stores.print.getState().count,
+    navigate: href => stores.navigation.getState().navigate({ href }),
     idToken: () => host.idToken(),
 
     checkpoint() {
@@ -239,9 +293,12 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
     reset() {
       calls.length = 0;
       adminRequests.length = 0;
+      // The app's window stays where it is.
+      const { url } = stores.navigation.getState();
       resetFeatureStores(stores);
+      stores.navigation.setState({ url });
       handlers = copy(baseline);
-      stores.resourcePicker.getState().setSelection({ selection: handlers.selection });
+      applyAnswers();
     },
     dispose() {
       controller?.abort();

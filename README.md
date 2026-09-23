@@ -68,9 +68,9 @@
 | `shopify.reviews` | 🔶 Stub | Returns success |
 | `shopify.app` | 🔶 Stub | Returns empty extensions |
 | Authenticated fetch | ✅ Supported | `shopify:admin/...` direct API access and `/admin/api/...`; mock, proxy, or direct modes. Same-origin requests get `Authorization: Bearer <id token>` |
-| Navigation | ❌ Not implemented | |
-| Print | ❌ Not implemented | |
-| Share | ❌ Not implemented | |
+| Navigation | ✅ Supported | `shopify://admin/...` links and `window.open()` show admin pages; the admin's URL follows the app's history, so reloads and deep links (`/admin/apps/<client id>/<path>`) return to the same page; the admin nav menu follows the app's links (`<s-link>`s dispatch `shopify:navigate`) |
+| Print | ✅ Supported | `window.print()` is reported to the admin and prints the app |
+| Share | ✅ Supported | `navigator.share()` opens a share sheet in the admin; dismissing it rejects with `AbortError` |
 
 ### Web Components
 | Component | Status | Notes |
@@ -79,7 +79,8 @@
 | `<ui-save-bar>` | ✅ Supported | With `data-save-bar` form integration |
 | `<ui-nav-menu>` | ✅ Supported | Displays in admin sidebar |
 | `<ui-title-bar>` | ✅ Supported | Inside modals |
-| `<s-app-window>` | ❌ Not implemented | |
+| `<s-app-window>` | ✅ Supported | `show()`, `hide()`, `toggle()`, `src`, `contentWindow`, `show`/`hide` events; full-screen in the admin |
+| Invoker commands | ✅ Supported | `<button commandfor="id" command="--show">` (and `--hide`, `--toggle`) for `<ui-modal>` and `<s-app-window>` |
 
 **Legend:** ✅ Supported | 🔶 Stub (returns mock data) | ❌ Not implemented
 
@@ -845,6 +846,8 @@ test("toasts errors", async () => {
 });
 ```
 
+In tests, `window.print()` and `window.open()` are recorded but never reach jsdom or the browser.
+
 Each test file gets a fresh bridge. Handlers registered at the top level or in `beforeAll` last for the whole file; handlers and recorded state from a test are reset after it (the same model as msw).
 
 ### `bridge` API
@@ -854,8 +857,12 @@ Each test file gets a fresh bridge. Handlers registered at the top level or in `
 | `graphql(operationName, handler)` | Answers a GraphQL operation by name (`'*'` answers any unhandled one). `handler(request)` receives `{ url, method, headers, body, operationName, query, variables }` and returns a JSON body or a `Response`. Unhandled operations reject with a hint. |
 | `rest(method, path, handler)` | Answers REST Admin requests; `path` is matched after `/admin/api/<version>/`, e.g. `'products.json'` or a RegExp. |
 | `resourcePicker(selection)` | What `shopify.resourcePicker()` resolves to; `undefined` simulates cancelling. Default `[]`. |
+| `shareResult(outcome)` | How the merchant answers `navigator.share()`: `'shared'` (default) or `'cancelled'`, which rejects with an `AbortError`. |
 | `toasts()` | Toasts shown so far: `{ id, message, isError, duration, action }`. |
-| `saveBar(id)` / `modal(id)` / `navMenu()` / `loading()` | Admin-side state. |
+| `saveBar(id)` / `modal(id)` / `appWindow(id)` / `navMenu()` / `loading()` | Admin-side state. |
+| `navigation()` | `{ url, adminPath, entries }`: the app's URL, the admin page it sent the merchant to (`shopify://admin/products` is `'/products'`), and every navigation, including `window.open()` calls. |
+| `navigate(href)` | Picks an admin nav menu item; the app follows its own link as if clicked. |
+| `shares()` / `prints()` | `navigator.share()` calls, and how many times the app called `window.print()`. |
 | `adminRequests` / `calls` | Every Admin API request and every App Bridge action, in order. |
 | `idToken()` | A fresh session token. |
 | `stores` | The underlying zustand stores the admin-frame renders from. |

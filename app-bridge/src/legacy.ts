@@ -130,8 +130,14 @@ export function createLegacyAppBridge(host: BridgeHost) {
       create: function (app: any) {
         return {
           dispatch: function (action: any, payload: any) {
+            // window.open is App Bridge's: admin paths and other windows reach the admin.
             if (action === Actions.Redirect.Action.REMOTE) {
-              window.open(payload.url, payload.newContext ? '_blank' : '_self');
+              window.open(typeof payload === 'string' ? payload : payload.url, payload.newContext ? '_blank' : '_top');
+            } else if (action === Actions.Redirect.Action.ADMIN_PATH) {
+              const path = typeof payload === 'string' ? payload : payload.path;
+              window.open(`shopify://admin${path.startsWith('/') ? '' : '/'}${path}`, payload.newContext ? '_blank' : '_self');
+            } else if (action === Actions.Redirect.Action.APP) {
+              window.location.assign(typeof payload === 'string' ? payload : payload.path);
             }
           },
         };
@@ -141,6 +147,9 @@ export function createLegacyAppBridge(host: BridgeHost) {
       },
       toApp: function (payload: any) {
         return { type: Actions.Redirect.Action.APP, payload };
+      },
+      toAdminPath: function (payload: any) {
+        return { type: Actions.Redirect.Action.ADMIN_PATH, payload };
       },
     },
     Error: {

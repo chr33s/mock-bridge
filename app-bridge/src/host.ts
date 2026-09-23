@@ -1,4 +1,4 @@
-import type { AdminFetchRequest, BridgeHost, FeatureActionRequestMessage } from '../../src/core/protocol';
+import type { AdminFetchRequest, BridgeHost, FeatureActionRequestMessage, FeatureEvent, FeatureEventMessage } from '../../src/core/protocol';
 import { decodeJwt } from '../../src/auth/jwt';
 
 type AdminApiConfig = 'mock' | { proxy: string } | { accessToken: string };
@@ -70,7 +70,8 @@ export function createPostMessageHost(): BridgeHost {
   return {
     config,
 
-    invoke(feature, action, payload) {
+    invoke(feature, action, payload, options = {}) {
+      const { timeout: ms = 1000 } = options;
       return new Promise((resolve, reject) => {
         const actionId = crypto.randomUUID();
         // Round-trip through JSON: callbacks in the payload can't be posted.
@@ -82,10 +83,10 @@ export function createPostMessageHost(): BridgeHost {
           payload: payload === undefined ? undefined : JSON.parse(JSON.stringify(payload)),
         };
 
-        const timeout = setTimeout(() => {
+        const timeout = ms > 0 ? setTimeout(() => {
           window.removeEventListener('message', handler);
-          reject(new Error('Feature action timed out after 1 second'));
-        }, 1000);
+          reject(new Error(`Feature action timed out after ${ms}ms`));
+        }, ms) : undefined;
 
         function handler(event: MessageEvent) {
           if (event.data?.type !== 'FEATURE_ACTION_RESPONSE' || event.data.action_id !== actionId) return;
@@ -97,6 +98,16 @@ export function createPostMessageHost(): BridgeHost {
         window.addEventListener('message', handler);
         window.parent.postMessage(message, '*');
       });
+    },
+
+    listen(listener) {
+      const handler = (event: MessageEvent) => {
+        if (event.source !== window.parent || event.data?.type !== 'FEATURE_EVENT') return;
+        const { feature, event: name, payload } = event.data as FeatureEventMessage;
+        listener({ feature, event: name, payload } satisfies FeatureEvent);
+      };
+      window.addEventListener('message', handler);
+      return () => window.removeEventListener('message', handler);
     },
 
     idToken,

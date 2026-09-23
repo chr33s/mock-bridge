@@ -23,12 +23,26 @@ export interface AdminFetchRequest {
   init: RequestInit;
 }
 
+export interface InvokeOptions {
+  /** Milliseconds to wait for the admin; `0` waits indefinitely, for actions that wait on the merchant. */
+  timeout?: number;
+}
+
+/** Something the admin tells the app unprompted, e.g. that the merchant closed an app window. */
+export interface FeatureEvent {
+  feature: string;
+  event: string;
+  payload?: unknown;
+}
+
 export interface BridgeHost {
   config: BridgeConfig;
   /** Overrides the environment derived from the window. */
   environment?: Partial<BridgeEnvironment>;
   /** Runs a feature action in the admin, e.g. `invoke('saveBar', 'show', { id })`, resolving to its result. */
-  invoke(feature: string, action: string, payload?: unknown): Promise<unknown>;
+  invoke(feature: string, action: string, payload?: unknown, options?: InvokeOptions): Promise<unknown>;
+  /** Subscribes to the admin's events. Returns an unsubscriber. */
+  listen(listener: (event: FeatureEvent) => void): () => void;
   idToken(): Promise<string>;
   /** Answers an Admin API request. `fetch` is the unpatched fetch. */
   adminFetch(request: AdminFetchRequest, fetch: typeof globalThis.fetch): Promise<Response>;
@@ -47,4 +61,8 @@ export type FeatureActionResponseMessage = {
   type: 'FEATURE_ACTION_RESPONSE';
   action_id: string;
   payload?: unknown;
+};
+
+export type FeatureEventMessage = FeatureEvent & {
+  type: 'FEATURE_EVENT';
 };

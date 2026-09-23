@@ -7,12 +7,33 @@ export interface FeatureContext {
   window: BridgeWindow;
   /** Aborted when the bridge is disposed; observers and listeners detach. */
   signal: AbortSignal;
+  /** Whether `print()` and `window.open()` also reach the browser, or are only recorded. */
+  native: boolean;
 }
 
 /** Invokes an action whose result the app never sees, e.g. from a sync API. */
 export function fire(ctx: FeatureContext, feature: string, action: string, payload?: unknown) {
   ctx.host.invoke(feature, action, payload).catch(error => {
     console.warn(`[MockAppBridge] ${feature}.${action} failed:`, error);
+  });
+}
+
+/** Calls `listener` for the admin's events about `feature` until the bridge is disposed. */
+export function onEvent(ctx: FeatureContext, feature: string, listener: (event: string, payload: any) => void) {
+  const unsubscribe = ctx.host.listen(event => {
+    if (event.feature === feature) listener(event.event, event.payload);
+  });
+  ctx.signal.addEventListener('abort', unsubscribe);
+}
+
+/** Replaces `target[key]` until the bridge is disposed. */
+export function patchMember<T extends object, K extends keyof T>(ctx: FeatureContext, target: T, key: K, value: T[K]) {
+  const own = Object.getOwnPropertyDescriptor(target, key);
+  Object.defineProperty(target, key, { configurable: true, writable: true, value });
+  ctx.signal.addEventListener('abort', () => {
+    if (target[key] !== value) return;
+    if (own) Object.defineProperty(target, key, own);
+    else delete target[key];
   });
 }
 
