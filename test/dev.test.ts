@@ -7,7 +7,7 @@ import type { ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const root = fileURLToPath(new URL('./fixtures/dev-app', import.meta.url));
-const pluginPath = fileURLToPath(new URL('../dist/vite/index.mjs', import.meta.url));
+const pluginPath = fileURLToPath(new URL('../dist/vite/index.js', import.meta.url));
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -89,6 +89,75 @@ describe('vite dev with mockBridge({ dev })', { timeout: 60_000 }, () => {
       expect(await frame.evaluate(() => (window as unknown as { results: unknown }).results))
         .toEqual({ shop: 'dev.myshopify.com', shopName: 'Mock Shop', token: 3 });
       await page.locator('.toast', { hasText: 'Hello from vite dev' }).waitFor({ timeout: 5000 });
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it.skipIf(!chromiumInstalled)('mirrors navigation, share sheets and app windows in the admin', async () => {
+    const { chromium } = await import('playwright');
+    const browser = await chromium.launch();
+    type AppWindow = { show(): Promise<void>; contentWindow: Window | null };
+    try {
+      const page = await browser.newPage();
+      const appFrame = (path = '/') => vi.waitFor(() => {
+        const found = page.frames().find(f => f.url().startsWith(`${appUrl}${path}`) && f.name() !== 'app-window-editor');
+        if (!found) throw new Error(`app frame at ${path} not loaded`);
+        return found;
+      }, { timeout: 10_000 });
+
+      await page.goto(`${adminUrl}/`);
+      let frame = await appFrame();
+      await frame.waitForFunction(() => (window as unknown as { results?: unknown }).results);
+
+      // The admin's URL follows the app's history, and deep links reload the app there.
+      await frame.evaluate(() => history.pushState(null, '', '/settings?tab=general'));
+      await page.waitForURL(/\/admin\/apps\/[^/]+\/settings\?tab=general$/);
+      await page.reload();
+      frame = await appFrame('/settings?tab=general');
+      await frame.waitForFunction(() => window.shopify);
+
+      // navigator.share() opens the admin's share sheet.
+      const shared = frame.evaluate(() => navigator.share({ title: 'Fee rules', url: '/fees' }).then(() => 'shared', (error: Error) => error.name));
+      await page.locator('.share-sheet', { hasText: 'Fee rules' }).waitFor();
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared).toBe('shared');
+
+      // <s-app-window> opens full screen, reachable through contentWindow.
+      await frame.evaluate(() => {
+        document.body.insertAdjacentHTML('beforeend', '<s-app-window id="editor" src="/editor"></s-app-window>');
+      });
+      await frame.waitForFunction(() => typeof (document.getElementById('editor') as unknown as AppWindow).show === 'function');
+      expect(await frame.evaluate(async () => {
+        const editor = document.getElementById('editor') as unknown as AppWindow & HTMLElement;
+        editor.addEventListener('hide', () => { editor.dataset.closed = 'yes'; });
+        await editor.show();
+        return editor.contentWindow !== null;
+      })).toBe(true);
+      await page.locator('.app-window[data-app-window="editor"] iframe[name="app-window-editor"]').waitFor();
+      await page.locator('.app-window').getByText('Close').click();
+      await frame.waitForFunction(() => document.getElementById('editor')?.dataset.closed === 'yes');
+
+      // The admin's nav menu follows the app's own links.
+      await frame.evaluate(() => {
+        document.body.insertAdjacentHTML('beforeend', '<ui-nav-menu><a href="/fees">Fees</a></ui-nav-menu>');
+      });
+      await page.locator('.navigation').getByText('Fees').click();
+      await page.waitForURL(/\/admin\/apps\/[^/]+\/fees$/);
+
+      // shopify://admin links leave the app for an admin page; back returns to the app.
+      frame = await appFrame('/fees');
+      await frame.waitForFunction(() => window.shopify);
+      await frame.evaluate(() => {
+        const link = Object.assign(document.createElement('a'), { href: 'shopify://admin/products', textContent: 'Products' });
+        document.body.append(link);
+        link.click();
+      });
+      await page.locator('.admin-page[data-admin-path="/products"]').waitFor();
+      expect(new URL(page.url()).pathname).toBe('/admin/products');
+      await page.goBack();
+      await page.waitForURL(/\/admin\/apps\/[^/]+\/fees$/);
+      await appFrame('/fees');
     } finally {
       await browser.close();
     }

@@ -1,12 +1,10 @@
-import { useStore } from "zustand";
-import { stores } from "../../store/features";
+import { appFrame, saveBarFrames, saveBars, stores } from "../../store/features";
 
 export function SaveBar() {
-  const saveBars = useStore(stores.saveBar, state => state.saveBars);
-  const hide = useStore(stores.saveBar, state => state.hide);
+  const { hide } = stores.saveBar.actions;
 
   // Get all visible save bars
-  const visibleSaveBars = Object.values(saveBars).filter(sb => sb.visible);
+  const visibleSaveBars = Object.values(saveBars.value).filter(sb => sb.visible);
 
   if (visibleSaveBars.length === 0) return null;
 
@@ -15,8 +13,7 @@ export function SaveBar() {
 
   const handleSave = () => {
     // Send message to iframe to trigger save
-    const iframe = document.getElementById('app-iframe') as HTMLIFrameElement;
-    iframe?.contentWindow?.postMessage({
+    (saveBarFrames.get(activeSaveBar.id) ?? appFrame())?.postMessage({
       type: 'SAVE_BAR_SAVE',
       id: activeSaveBar.id,
     }, '*');
@@ -30,8 +27,7 @@ export function SaveBar() {
     }
 
     // Send message to iframe to trigger discard
-    const iframe = document.getElementById('app-iframe') as HTMLIFrameElement;
-    iframe?.contentWindow?.postMessage({
+    (saveBarFrames.get(activeSaveBar.id) ?? appFrame())?.postMessage({
       type: 'SAVE_BAR_DISCARD',
       id: activeSaveBar.id,
     }, '*');

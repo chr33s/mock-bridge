@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
-import { mockBridge } from '../../../dist/vite/index.mjs';
+import { mockBridge } from '../../../dist/vite/index.js';
 
 export default defineConfig({
   plugins: [mockBridge({ shop: 'fixture.myshopify.com', environment: 'mock-bridge' })],

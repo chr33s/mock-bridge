@@ -1,4 +1,4 @@
-import type { BridgeHost } from './protocol';
+import type { BridgeHost } from './protocol.js';
 
 type FetchTarget = { fetch?: typeof globalThis.fetch; location?: { href: string; origin: string } };
 

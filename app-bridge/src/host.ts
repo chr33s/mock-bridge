@@ -1,4 +1,11 @@
-import type { AdminFetchRequest, BridgeHost, FeatureActionRequestMessage } from '../../src/core/protocol';
+import type {
+  AdminFetchRequest,
+  BridgeHost,
+  FeatureActionRequestMessage,
+  FeatureActionResponseMessage,
+  FeatureEvent,
+  FeatureEventMessage,
+} from '../../src/core/protocol';
 import { decodeJwt } from '../../src/auth/jwt';
 
 type AdminApiConfig = 'mock' | { proxy: string } | { accessToken: string };
@@ -19,6 +26,8 @@ function detectMockServerUrl(): string {
 export function createPostMessageHost(): BridgeHost {
   const mockServerUrl = detectMockServerUrl();
   const params = new URLSearchParams(window.location.search);
+  // This page: when the admin hears from a new one, it drops what the previous page showed.
+  const page = Math.random().toString(36).slice(2, 10);
   let token: { value: string; exp: number } | null = null;
   let pendingToken: Promise<string> | null = null;
 
@@ -70,33 +79,47 @@ export function createPostMessageHost(): BridgeHost {
   return {
     config,
 
-    invoke(feature, action, payload) {
+    invoke(feature, action, payload, options = {}) {
+      const { timeout: ms = 1000 } = options;
       return new Promise((resolve, reject) => {
         const actionId = crypto.randomUUID();
         // Round-trip through JSON: callbacks in the payload can't be posted.
         const message: FeatureActionRequestMessage = {
           type: 'FEATURE_ACTION_REQUEST',
           action_id: actionId,
+          page,
           feature,
           action,
           payload: payload === undefined ? undefined : JSON.parse(JSON.stringify(payload)),
         };
 
-        const timeout = setTimeout(() => {
+        const timeout = ms > 0 ? setTimeout(() => {
           window.removeEventListener('message', handler);
-          reject(new Error('Feature action timed out after 1 second'));
-        }, 1000);
+          reject(new Error(`Feature action timed out after ${ms}ms`));
+        }, ms) : undefined;
 
         function handler(event: MessageEvent) {
           if (event.data?.type !== 'FEATURE_ACTION_RESPONSE' || event.data.action_id !== actionId) return;
           clearTimeout(timeout);
           window.removeEventListener('message', handler);
-          resolve(event.data.payload);
+          const { payload, error } = event.data as FeatureActionResponseMessage;
+          if (error !== undefined) reject(new Error(`${feature}.${action} failed in the admin: ${error}`));
+          else resolve(payload);
         }
 
         window.addEventListener('message', handler);
         window.parent.postMessage(message, '*');
       });
+    },
+
+    listen(listener) {
+      const handler = (event: MessageEvent) => {
+        if (event.source !== window.parent || event.data?.type !== 'FEATURE_EVENT') return;
+        const { feature, event: name, payload } = event.data as FeatureEventMessage;
+        listener({ feature, event: name, payload } satisfies FeatureEvent);
+      };
+      window.addEventListener('message', handler);
+      return () => window.removeEventListener('message', handler);
     },
 
     idToken,

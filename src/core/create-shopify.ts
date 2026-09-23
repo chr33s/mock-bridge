@@ -1,25 +1,42 @@
 import type { ShopifyGlobal } from '@shopify/app-bridge-types';
-import type { BridgeHost } from './protocol';
-import { fire, type BridgeWindow, type FeatureContext } from './features/context';
-import { modal } from './features/modal';
-import { navMenu } from './features/nav-menu';
-import { saveBar } from './features/save-bar';
-import { app, intents, picker, pos, reviews, scanner, scopes, shopifyQL, support, tools, user, webVitals } from './features/stubs';
+import type { BridgeHost } from './protocol.js';
+import { appWindow } from './features/app-window.js';
+import { commands } from './features/commands.js';
+import { fire, type BridgeWindow, type FeatureContext } from './features/context.js';
+import { modal } from './features/modal.js';
+import { navMenu } from './features/nav-menu.js';
+import { navigation } from './features/navigation.js';
+import { print } from './features/print.js';
+import { saveBar } from './features/save-bar.js';
+import { share } from './features/share.js';
+import { titleBar } from './features/title-bar.js';
+import { app, intents, picker, pos, reviews, scanner, scopes, shopifyQL, support, tools, user, webVitals } from './features/stubs.js';
 
 export interface CreateShopifyOptions {
-  /** The window whose DOM is observed for `<ui-modal>`, `<ui-save-bar>` and `<ui-nav-menu>`. */
+  /**
+   * The app's window: its DOM is observed for `<ui-modal>`, `<ui-save-bar>`, `<ui-nav-menu>`,
+   * `<ui-title-bar>`, `<s-page>` and `<s-app-window>`, and its `open`, `print`, `history` and `navigator.share` are patched.
+   */
   window: BridgeWindow;
-  /** Abort to disconnect the DOM observers and listeners. */
+  /** Abort to disconnect the DOM observers and listeners and restore patched APIs. */
   signal?: AbortSignal;
+  /** Whether `print()` and `window.open()` also reach the browser; otherwise they're only recorded. @default true */
+  native?: boolean;
 }
 
 /** Builds a `window.shopify` whose admin side is `host`. */
 export function createShopify(host: BridgeHost, options: CreateShopifyOptions): ShopifyGlobal {
   const { window } = options;
-  const ctx: FeatureContext = { host, window, signal: options.signal ?? new AbortController().signal };
+  const ctx: FeatureContext = { host, window, signal: options.signal ?? new AbortController().signal, native: options.native ?? true };
   let toastId = 0;
 
   navMenu(ctx);
+  navigation(ctx);
+  print(ctx);
+  share(ctx);
+  appWindow(ctx);
+  titleBar(ctx);
+  commands(ctx);
 
   return {
     config: host.config,

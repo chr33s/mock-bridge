@@ -1,12 +1,11 @@
 /// <reference types="vitest/config" />
-import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import type { Plugin, ViteDevServer } from 'vite';
 import type { BrowserConfigOptions } from 'vitest/node';
-import type { MockShopifyAdminServer } from '../server';
-import type { AdminApiConfig } from '../types';
-import type { MockBridgeEnvironmentOptions } from '../vitest';
+import type { MockShopifyAdminServer } from '../server/index.js';
+import type { AdminApiConfig } from '../types/index.js';
+import type { MockBridgeEnvironmentOptions } from '../vitest/index.js';
 
 export interface MockBridgeBrowserOptions {
   /** @default [{ browser: 'chromium' }] */
@@ -60,6 +59,8 @@ const APP_BRIDGE_CDN = /https:\/\/cdn\.shopify\.com\/shopifycloud\/app-bridge\.j
 const DEFAULT_DEV_PORT = 3080;
 
 const resolveDist = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+// Shipped as source (package.json "files"), so it resolves the same from src/ and dist/.
+const TESTER_HTML = resolveDist('../../src/vitest/tester.html');
 
 async function playwrightProvider() {
   try {
@@ -80,7 +81,7 @@ async function browserConfig(user: BrowserConfigOptions, options: MockBridgeBrow
   if (!user.provider) config.provider = await playwrightProvider();
   if (!user.instances?.length) config.instances = options.instances ?? [{ browser: 'chromium' }];
   // A page that loads Polaris like the admin does; Vitest injects its tester scripts into it.
-  if (!user.testerHtmlPath && options.polaris !== false) config.testerHtmlPath = resolveDist('../vitest/tester.html');
+  if (!user.testerHtmlPath && options.polaris !== false) config.testerHtmlPath = TESTER_HTML;
   if (user.headless === undefined && options.headless !== undefined) config.headless = options.headless;
   return config;
 }
@@ -129,12 +130,12 @@ export function mockBridge(options: MockBridgePluginOptions = {}): Plugin {
       const inBrowser = !!(browserOptions || test.browser?.enabled);
       return {
         test: {
-          setupFiles: [resolveDist('../vitest/setup.mjs')],
+          setupFiles: [resolveDist('../vitest/setup.js')],
           provide: { mockBridge: bridgeOptions },
           environmentOptions: { mockBridge: { ...bridgeOptions, scripts } },
           ...(browserOptions && { browser: await browserConfig(test.browser ?? {}, browserOptions) }),
           ...(!test.environment && !inBrowser && {
-            environment: environment === 'mock-bridge' ? resolveDist('../vitest/environment.mjs') : 'jsdom',
+            environment: environment === 'mock-bridge' ? resolveDist('../vitest/environment.js') : 'jsdom',
           }),
         },
       };
@@ -168,8 +169,8 @@ export function mockBridge(options: MockBridgePluginOptions = {}): Plugin {
           logger.warn('[mock-bridge] Set dev.appUrl: the app URL is unknown without an HTTP server.');
           return;
         }
-        // The CommonJS server entry, resolved through the package's own exports.
-        const { MockShopifyAdminServer } = createRequire(import.meta.url)('@getverdict/mock-bridge') as typeof import('../index');
+        // Loaded on demand: express and friends aren't needed for tests or builds.
+        const { MockShopifyAdminServer } = await import('../server/index.js');
         const candidate = new MockShopifyAdminServer({
           appUrl,
           appPath: devOptions.appPath,

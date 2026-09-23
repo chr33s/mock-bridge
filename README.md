@@ -68,9 +68,9 @@
 | `shopify.reviews` | 🔶 Stub | Returns success |
 | `shopify.app` | 🔶 Stub | Returns empty extensions |
 | Authenticated fetch | ✅ Supported | `shopify:admin/...` direct API access and `/admin/api/...`; mock, proxy, or direct modes. Same-origin requests get `Authorization: Bearer <id token>` |
-| Navigation | ❌ Not implemented | |
-| Print | ❌ Not implemented | |
-| Share | ❌ Not implemented | |
+| Navigation | ✅ Supported | `shopify://admin/...` links and `window.open()` show admin pages; the admin's URL follows the app's history, so reloads and deep links (`/admin/apps/<client id>/<path>`) return to the same page; the admin nav menu follows the app's links (`<s-link>`s dispatch `shopify:navigate`) |
+| Print | ✅ Supported | `window.print()` is reported to the admin and prints the app |
+| Share | ✅ Supported | `navigator.share()` opens a share sheet in the admin; dismissing it rejects with `AbortError` |
 
 ### Web Components
 | Component | Status | Notes |
@@ -78,8 +78,10 @@
 | `<ui-modal>` | ✅ Supported | With `<ui-title-bar>` support |
 | `<ui-save-bar>` | ✅ Supported | With `data-save-bar` form integration |
 | `<ui-nav-menu>` | ✅ Supported | Displays in admin sidebar |
-| `<ui-title-bar>` | ✅ Supported | Inside modals |
-| `<s-app-window>` | ❌ Not implemented | |
+| `<ui-title-bar>` | ✅ Supported | In modals, and as the page's title bar: `title`, breadcrumb, primary and secondary actions, and `<section label>` groups show in the admin; clicking one clicks the app's button |
+| `<s-page>` | ✅ Supported | `heading` and the `breadcrumb-actions`, `primary-action` and `secondary-actions` slots show in the admin's title bar (a secondary action with `commandfor` an `<s-menu>` is a group); clicking one clicks the app's button, and `<s-link>`s dispatch `shopify:navigate` |
+| `<s-app-window>` | ✅ Supported | `show()`, `hide()`, `toggle()`, `src`, `contentWindow`, `show`/`hide` events; full-screen in the admin |
+| Invoker commands | ✅ Supported | `<button commandfor="id" command="--show">` (and `--hide`, `--toggle`) for `<ui-modal>` and `<s-app-window>` |
 
 **Legend:** ✅ Supported | 🔶 Stub (returns mock data) | ❌ Not implemented
 
@@ -125,8 +127,8 @@ npx @getverdict/mock-bridge http://localhost:3000
 # Generate a config file
 npx @getverdict/mock-bridge init
 
-# Edit the generated mock.config.js, then run:
-npx @getverdict/mock-bridge
+# Edit the generated mock.config.mjs, then run:
+npx @getverdict/mock-bridge --config mock.config.mjs
 ```
 
 ```bash
@@ -146,7 +148,7 @@ If you need more control, you can still use the programmatic API:
 
 ```javascript
 // scripts/start-mock-admin.js
-const { MockShopifyAdminServer } = require("@verdict/mock-bridge");
+import { MockShopifyAdminServer } from "@getverdict/mock-bridge";
 
 async function startMockAdmin() {
   const server = new MockShopifyAdminServer({
@@ -449,7 +451,7 @@ npx @getverdict/mock-bridge http://localhost:3000/shopify \
 
 # Using config file
 npx @getverdict/mock-bridge init           # Create config file
-npx @getverdict/mock-bridge                # Use config file
+npx @getverdict/mock-bridge --config mock.config.mjs  # Use config file
 
 # Help and version
 npx @getverdict/mock-bridge --help
@@ -465,7 +467,7 @@ npx @getverdict/mock-bridge --version
 | `--client-secret` | Mock client secret                   | `"mock-secret-12345"`           |
 | `--shop`          | Mock shop domain                     | `"test-shop.myshopify.com"`     |
 | `--port`          | Mock admin port                      | `3080`                          |
-| `--config`        | Config file path                     | `"mock.config.js"`              |
+| `--config`        | Config file path, e.g. `mock.config.mjs` | —                           |
 | `--debug`         | Enable debug logging                 | `false`                         |
 
 ### Environment Variables
@@ -482,8 +484,8 @@ NODE_ENV=development                # Enables mock token support
 Generate a configuration file with `npx @getverdict/mock-bridge init`:
 
 ```javascript
-// mock.config.js
-module.exports = {
+// mock.config.mjs
+export default {
   appUrl: "http://localhost:3000/shopify", // Include path in URL
   clientId: process.env.SHOPIFY_API_KEY,
   clientSecret: "mock-secret-12345",
@@ -575,22 +577,22 @@ const server = new MockShopifyAdminServer({
 Control how `fetch('/admin/api/...')` requests are handled:
 
 ```javascript
-// mock.config.js
+// mock.config.mjs (pick one)
 
 // Option 1: Mock data (default) - returns fake data, works offline
-module.exports = {
+export default {
   adminApi: "mock",
 };
 
 // Option 2: Proxy through your app - for real data via your backend
-module.exports = {
+export default {
   adminApi: {
     proxy: "http://localhost:3000/api/shopify-proxy",
   },
 };
 
 // Option 3: Direct to Shopify - requires access token from installed shop
-module.exports = {
+export default {
   adminApi: {
     accessToken: process.env.SHOPIFY_ACCESS_TOKEN,
   },
@@ -845,6 +847,8 @@ test("toasts errors", async () => {
 });
 ```
 
+In tests, `window.print()` and `window.open()` are recorded but never reach jsdom or the browser.
+
 Each test file gets a fresh bridge. Handlers registered at the top level or in `beforeAll` last for the whole file; handlers and recorded state from a test are reset after it (the same model as msw).
 
 ### `bridge` API
@@ -854,11 +858,17 @@ Each test file gets a fresh bridge. Handlers registered at the top level or in `
 | `graphql(operationName, handler)` | Answers a GraphQL operation by name (`'*'` answers any unhandled one). `handler(request)` receives `{ url, method, headers, body, operationName, query, variables }` and returns a JSON body or a `Response`. Unhandled operations reject with a hint. |
 | `rest(method, path, handler)` | Answers REST Admin requests; `path` is matched after `/admin/api/<version>/`, e.g. `'products.json'` or a RegExp. |
 | `resourcePicker(selection)` | What `shopify.resourcePicker()` resolves to; `undefined` simulates cancelling. Default `[]`. |
+| `shareResult(outcome)` | How the merchant answers `navigator.share()`: `'shared'` (default) or `'cancelled'`, which rejects with an `AbortError`. |
 | `toasts()` | Toasts shown so far: `{ id, message, isError, duration, action }`. |
-| `saveBar(id)` / `modal(id)` / `navMenu()` / `loading()` | Admin-side state. |
-| `adminRequests` / `calls` | Every Admin API request and every App Bridge action, in order. |
+| `saveBar(id)` / `modal(id)` / `appWindow(id)` / `navMenu()` / `loading()` | Admin-side state. |
+| `navigation()` | `{ url, adminPath, entries }`: the app's URL, the admin page it sent the merchant to (`shopify://admin/products` is `'/products'`), and every navigation, including `window.open()` calls. |
+| `navigate(href)` | Picks an admin nav menu item; the app follows its own link as if clicked. |
+| `titleBar()` | The page's `<ui-title-bar>` or `<s-page>` as the admin shows it: `{ title, breadcrumb, primaryAction, secondaryActions }`, or `null`. |
+| `clickTitleBarAction(idOrLabel)` | Clicks a title bar action in the admin, by id (the element's `id`, else e.g. `'primary'`) or label; the app's button gets the click. |
+| `shares()` / `prints()` | `navigator.share()` calls, and how many times the app called `window.print()`. |
+| `adminRequests` / `calls` | Every Admin API request and every App Bridge call the app made, in order. What the bridge mirrors from the page (URL, title bar, nav menu, elements) is in `stores`. |
 | `idToken()` | A fresh session token. |
-| `stores` | The underlying zustand stores the admin-frame renders from. |
+| `stores` | The admin state the admin-frame renders from, per feature: `state` (a `@preact/signals-core` signal), `subscribe((state, previous) => …)`, `actions`, `set(change)` and `reset()`. Prefer `subscribe` or `state.subscribe()`: your own `effect()` only tracks `state` if it comes from the same copy of `@preact/signals-core`. |
 
 Plugin options: `shop`, `apiKey`, `clientSecret` (pass your app's secret to have your backend accept the tokens), `userId`, `locale`, `embedded`, `browser` (see above), and `environment` (see below).
 

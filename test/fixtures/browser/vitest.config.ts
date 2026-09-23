@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import { mockBridge } from '../../../dist/vite/index.mjs';
+import { mockBridge } from '../../../dist/vite/index.js';
 
 // Polaris loads from Shopify's CDN; the integration test sets this when it's unreachable.
 const offline = !!process.env.MOCK_BRIDGE_OFFLINE;
