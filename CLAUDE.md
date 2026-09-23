@@ -5,7 +5,8 @@ Shopify embedded app testing solution - test locally without real credentials.
 ## Quick Start
 - `npm install` - Install dependencies
 - `npm run build` - Build TypeScript
-- `npx ts-node src/cli/index.ts <app-url>` - Run dev server
+- `node dist/cli/index.js <app-url>` - Run the mock server (after building)
+- `npm run dev` - Rebuild on change and run `src/server/dev.ts` with `.env`
 
 ## Architecture
 - `src/server/` - Express server (MockShopifyAdminServer)

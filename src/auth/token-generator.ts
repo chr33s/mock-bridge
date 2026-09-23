@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
 import type { SessionTokenPayload, TokenGeneratorOptions } from './jwt';
@@ -35,7 +34,7 @@ export class TokenGenerator {
       exp: now + expiresInSeconds,
       nbf: now,
       iat: now,
-      jti: uuidv4(),
+      jti: crypto.randomUUID(),
       sid: sessionId,
       sig: crypto.randomBytes(32).toString('hex'),
     };
@@ -100,7 +99,7 @@ export class TokenGenerator {
       exp: now + expiresInSeconds,
       nbf: now,
       iat: now,
-      jti: uuidv4(), // New JWT ID for the refreshed token
+      jti: crypto.randomUUID(), // New JWT ID for the refreshed token
     };
 
     return jwt.sign(refreshedPayload, this.clientSecret, {

@@ -227,7 +227,8 @@ export class MockShopifyAdminServer {
     }
 
     // Catch-all for undefined routes
-    this.app.use('*', (req: Request, res: Response) => {
+    // Express 5 has no '*' path; a pathless middleware catches everything left.
+    this.app.use((req: Request, res: Response) => {
       if (this.config.debug) {
         console.log(`[MockShopify] Unhandled route: ${req.method} ${req.originalUrl}`);
       }
@@ -440,7 +441,9 @@ export class MockShopifyAdminServer {
 
   public async start(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.server = this.app.listen(this.config.port, () => {
+      // Express 5 calls this with the error if listening fails (e.g. EADDRINUSE).
+      this.server = this.app.listen(this.config.port, (error?: Error) => {
+        if (error) return reject(error);
         if (!this.config.quiet) console.log(`
 🚀 Mock Shopify Admin Server Started!
 ====================================
@@ -452,8 +455,6 @@ export class MockShopifyAdminServer {
         `);
         resolve();
       });
-      // e.g. EADDRINUSE; without this the error is unhandled.
-      this.server.once('error', reject);
     });
   }
 

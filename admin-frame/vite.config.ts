@@ -1,25 +1,23 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { config } from 'dotenv';
-
-config({ path: '../.env' });
-
-const MOCK_API_PORT = process.env.SHOPIFY_PORT || '3080';
+import { defineConfig, loadEnv } from 'vite'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import babel from '@rolldown/plugin-babel'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react({
-      babel: {
-        plugins: [['babel-plugin-react-compiler']],
-      },
-    }),
-  ],
-  server: {
-    proxy: {
-      '/api': {
-        target: `http://localhost:${MOCK_API_PORT}`,
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  // The mock server's port, from the repo root's .env.
+  const { SHOPIFY_PORT = '3080' } = loadEnv(mode, '..', 'SHOPIFY_')
+
+  return {
+    plugins: [
+      react(),
+      babel({ presets: [reactCompilerPreset()] }),
+    ],
+    server: {
+      proxy: {
+        '/api': {
+          target: `http://localhost:${SHOPIFY_PORT}`,
+          changeOrigin: true,
+        },
       },
     },
   }
