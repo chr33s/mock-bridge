@@ -9,7 +9,8 @@ export function AppWindow({ config }: { config: Config }) {
   const open = Object.values(appWindows.value).filter(appWindow => appWindow.open && appWindow.src);
 
   useEffect(() => {
-    fetchSessionToken(config).then(setSessionToken);
+    fetchSessionToken(config).then(setSessionToken)
+      .catch(error => console.error('[MockAdmin] Could not fetch a session token:', error));
   }, [config]);
 
   return open.map(appWindow => (

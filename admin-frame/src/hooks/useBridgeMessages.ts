@@ -17,7 +17,7 @@ export function useBridgeMessages(config: Config | null) {
       if (event.data.type === 'SESSION_TOKEN_REQUEST') {
         fetchSessionToken(config).then(token => {
           source.postMessage({ type: 'SESSION_TOKEN_RESPONSE', token }, '*');
-        });
+        }).catch(error => console.error('[MockAdmin] Could not fetch a session token:', error));
       }
 
       // The app called something, like shopify.modal.show('modal_id'): run it on the feature's store.
@@ -34,7 +34,7 @@ export function useBridgeMessages(config: Config | null) {
         Promise.resolve(result).then(result => setTimeout(() => {
           const response: FeatureActionResponseMessage = { type: 'FEATURE_ACTION_RESPONSE', action_id, payload: result };
           source.postMessage(response, '*');
-        }));
+        })).catch(error => console.error('[MockAdmin] Feature action failed:', feature, action, error));
       }
     };
 

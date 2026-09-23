@@ -63,8 +63,9 @@ export function titleBar(ctx: FeatureContext) {
       const target = id ? document.getElementById(id) : null;
       return target?.localName === 's-menu' ? target : null;
     };
+    const heading = (page as { heading?: unknown }).heading;
     return {
-      title: page.getAttribute('heading') || String((page as { heading?: unknown }).heading ?? ''),
+      title: page.getAttribute('heading') || (typeof heading === 'string' ? heading : ''),
       breadcrumb: breadcrumb ? action(breadcrumb, 'breadcrumb') : null,
       primaryAction: primary ? action(primary, 'primary') : null,
       secondaryActions: slotted('secondary-actions').map((child, index) => {

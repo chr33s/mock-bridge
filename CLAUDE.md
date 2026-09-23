@@ -31,6 +31,7 @@ The package is ESM (`"type": "module"`): `tsc` compiles `src/` to `dist/` (relat
 ## Testing
 - `npm test` - builds the ESM entries, then runs unit tests and the fixture projects in `test/fixtures` (jsdom, the mock-bridge environment, and Browser Mode with Polaris when Chromium is installed)
 - `npm run typecheck`
+- `npm run lint` - oxlint with type-aware rules (tsgolint) over the whole repo; `admin-frame/.oxlintrc.json` adds its hooks rules
 
 Server runs on port 3080 by default. Navigate to http://localhost:3080 to see mock admin.
 

@@ -9,7 +9,8 @@ export function useMockBridge(config: Config, entry: string) {
 
   useEffect(() => {
     // Need a session token to initially load the iframe
-    fetchSessionToken(config).then(setSessionToken);
+    fetchSessionToken(config).then(setSessionToken)
+      .catch(error => console.error('[MockAdmin] Could not fetch a session token:', error));
   }, [config]);
 
   useEffect(() => {

@@ -31,4 +31,4 @@ const server = new MockShopifyAdminServer({
   debug: DEBUG === 'true',
 });
 
-server.start();
+await server.start();

@@ -2,6 +2,31 @@
   "name": "@getverdict/mock-bridge",
   "version": "1.3.0",
   "description": "Mock Shopify App Bridge for testing and development",
+  "keywords": [
+    "app-bridge",
+    "development",
+    "mock",
+    "shopify",
+    "testing"
+  ],
+  "license": "MIT",
+  "author": "Verdict",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ctrlaltdylan/mock-bridge.git"
+  },
+  "bin": {
+    "mock-bridge": "dist/cli/index.js"
+  },
+  "workspaces": [
+    "admin-frame"
+  ],
+  "files": [
+    "dist/",
+    "admin-frame/dist/",
+    "app-bridge/dist/",
+    "src/vitest/tester.html"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -42,35 +67,23 @@
     "./dist/*": "./dist/*",
     "./package.json": "./package.json"
   },
-  "bin": {
-    "mock-bridge": "dist/cli/index.js"
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "npm run clean && tsc && npm run build:admin-frame && npm run build:app-bridge",
-    "build:admin-frame": "cd admin-frame && npm run build",
+    "build:admin-frame": "npm run build -w admin-frame",
     "build:app-bridge": "vite build --config app-bridge/vite.config.ts",
     "test": "npm run build && vitest run",
     "typecheck": "tsc --noEmit && tsc --noEmit -p app-bridge",
+    "lint": "oxlint --type-aware",
     "dev": "concurrently \"tsc --watch --preserveWatchOutput\" \"node --watch --env-file-if-exists=.env dist/server/dev.js\" \"npm run dev:app-bridge\" \"npm run dev:admin-frame\"",
     "dev:app-bridge": "vite build --watch --config app-bridge/vite.config.ts",
-    "dev:admin-frame": "cd admin-frame && npm run dev",
+    "dev:admin-frame": "npm run dev -w admin-frame",
     "start": "node dist/server/index.js",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
-    "prepare": "cd admin-frame && npm install --legacy-peer-deps && cd .. && npm run build"
-  },
-  "keywords": [
-    "shopify",
-    "app-bridge",
-    "mock",
-    "testing",
-    "development"
-  ],
-  "author": "Verdict",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ctrlaltdylan/mock-bridge.git"
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@preact/signals-core": "^1.14.4",
@@ -92,6 +105,8 @@
     "@vitest/browser-playwright": "^5.0.1",
     "concurrently": "^10.0.5",
     "jsdom": "^30.1.1",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2002",
     "playwright": "^1.63.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
@@ -119,14 +134,5 @@
   },
   "engines": {
     "node": "^22.15.0 || ^24.0.0 || >=26.0.0"
-  },
-  "files": [
-    "dist/",
-    "admin-frame/dist/",
-    "app-bridge/dist/",
-    "src/vitest/tester.html"
-  ],
-  "publishConfig": {
-    "access": "public"
   }
 }

@@ -7,11 +7,11 @@ export interface MockTokenHandlerOptions {
   /** Only enable mock tokens in development (default: true) */
   developmentOnly?: boolean;
   /** Custom handler for mock tokens */
-  onMockToken?: (authResult: AuthResult) => any | Promise<any>;
+  onMockToken?: (authResult: AuthResult) => any;
   /** Custom handler for real tokens */
-  onRealToken?: (authResult: AuthResult) => any | Promise<any>;
+  onRealToken?: (authResult: AuthResult) => any;
   /** Function to get shop data for mock user generation */
-  getShopData?: (shopName: string) => any | Promise<any>;
+  getShopData?: (shopName: string) => any;
 }
 
 /**
