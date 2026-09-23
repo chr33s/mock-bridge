@@ -1,4 +1,4 @@
-import { signal, type ReadonlySignal } from '@preact/signals-core';
+import { action, signal, type ReadonlySignal } from '@preact/signals-core';
 
 /**
  * Admin-side state for each App Bridge feature. The admin-frame renders it;
@@ -111,9 +111,16 @@ export type FeatureEmitter = (feature: string, event: string, payload?: unknown)
 
 type Setter<S> = (change: Partial<S> | ((state: S) => Partial<S>)) => void;
 
+type Actions = Record<string, (...args: any[]) => unknown>;
+
 export interface FeatureStore<S, A> {
-  /** The feature's state. Read `.value` to track it, `.peek()` to read it untracked. */
+  /**
+   * The feature's state, as a `@preact/signals-core` signal. Read `.value` to track it, `.peek()` to read it untracked.
+   * Only `effect`s and `computed`s from the same copy of `@preact/signals-core` track it; `subscribe` works everywhere.
+   */
   state: ReadonlySignal<S>;
+  /** Calls `listener` after every change, with the new and previous state. Returns an unsubscriber. */
+  subscribe(listener: (state: S, previous: S) => void): () => void;
   /** Changes the state: merges `change` into it. */
   set: Setter<S>;
   /** Puts the state back how it started. */
@@ -121,13 +128,35 @@ export interface FeatureStore<S, A> {
   actions: A;
 }
 
-function defineStore<S extends object, A>(initial: S, actions: (set: Setter<S>, get: () => S) => A): FeatureStore<S, A> {
+/** A feature's store. Each action runs as one batch, untracked; `onReset` clears what lives outside the state. */
+function defineStore<S extends object, A extends Actions>(
+  initial: S,
+  actions: (set: Setter<S>, get: () => S) => A,
+  onReset?: () => void,
+): FeatureStore<S, A> {
   const state = signal(initial);
+  const listeners = new Set<(state: S, previous: S) => void>();
   const get = () => state.peek();
-  const set: Setter<S> = change => {
-    state.value = { ...get(), ...(typeof change === 'function' ? change(get()) : change) };
+  const write = (next: S) => {
+    const previous = get();
+    state.value = next;
+    listeners.forEach(listener => listener(next, previous));
   };
-  return { state, set, reset: () => { state.value = initial; }, actions: actions(set, get) };
+  const set: Setter<S> = change => write({ ...get(), ...(typeof change === 'function' ? change(get()) : change) });
+
+  return {
+    state,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    },
+    set,
+    reset() {
+      onReset?.();
+      write(initial);
+    },
+    actions: Object.fromEntries(Object.entries(actions(set, get)).map(([name, fn]) => [name, action(fn)])) as A,
+  };
 }
 
 function createModalStore() {
@@ -279,6 +308,11 @@ function createTitleBarStore(emit: FeatureEmitter) {
 
 function createShareStore() {
   let settle: ((outcome: ShareOutcome) => void) | undefined;
+  // A share still waiting for the merchant ends as if they dismissed the sheet.
+  const cancel = () => {
+    settle?.('cancelled');
+    settle = undefined;
+  };
 
   return defineStore(
     {
@@ -291,7 +325,7 @@ function createShareStore() {
       share: (payload: ShareRequest): ShareOutcome | Promise<ShareOutcome> => {
         const { outcome } = get();
         if (outcome) return outcome;
-        settle?.('cancelled');
+        cancel();
         set({ current: payload });
         return new Promise(resolve => { settle = resolve; });
       },
@@ -303,6 +337,7 @@ function createShareStore() {
       },
       setOutcome: (payload: { outcome: ShareOutcome | undefined }) => set({ outcome: payload.outcome }),
     }),
+    cancel,
   );
 }
 

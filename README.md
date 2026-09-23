@@ -868,7 +868,7 @@ Each test file gets a fresh bridge. Handlers registered at the top level or in `
 | `shares()` / `prints()` | `navigator.share()` calls, and how many times the app called `window.print()`. |
 | `adminRequests` / `calls` | Every Admin API request and every App Bridge action, in order. |
 | `idToken()` | A fresh session token. |
-| `stores` | The admin state the admin-frame renders from, per feature: `state` (a `@preact/signals-core` signal), `actions`, `set(change)` and `reset()`. |
+| `stores` | The admin state the admin-frame renders from, per feature: `state` (a `@preact/signals-core` signal), `subscribe((state, previous) => …)`, `actions`, `set(change)` and `reset()`. Prefer `subscribe` or `state.subscribe()`: your own `effect()` only tracks `state` if it comes from the same copy of `@preact/signals-core`. |
 
 Plugin options: `shop`, `apiKey`, `clientSecret` (pass your app's secret to have your backend accept the tokens), `userId`, `locale`, `embedded`, `browser` (see above), and `environment` (see below).
 

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { effect } from "@preact/signals";
 import { appPath } from "../lib/app";
 import { stores } from "../store/features";
 import type { Config } from "./useConfig";
@@ -50,13 +49,9 @@ export function useAdminRoute(config: Config | null) {
   useEffect(() => {
     if (!config) return;
 
-    // Runs straight away with `state === previous`, which changes nothing.
-    let previous = stores.navigation.state.peek();
-    return effect(() => {
-      const state = stores.navigation.state.value;
-      const entry = state.entries.length > previous.entries.length ? state.entries[state.entries.length - 1] : undefined;
-      if (entry?.type === 'admin' && entry.newContext) {
-        window.open(adminUrl(entry.path), '_blank');
+    return stores.navigation.subscribe((state, previous) => {
+      for (const entry of state.entries.slice(previous.entries.length)) {
+        if (entry.type === 'admin' && entry.newContext) window.open(adminUrl(entry.path), '_blank');
       }
 
       if (state.adminPath !== null && state.adminPath !== previous.adminPath) {
@@ -66,7 +61,6 @@ export function useAdminRoute(config: Config | null) {
         const path = appPath(config, state.url);
         if (path !== null) history.replaceState(null, '', `${appsPrefix}${path}`);
       }
-      previous = state;
     });
   }, [config, appsPrefix]);
 

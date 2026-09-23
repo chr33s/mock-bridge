@@ -24,6 +24,7 @@ import {
 
 export type {
   AppWindowState,
+  FeatureStore,
   FeatureStores,
   ModalState,
   NavigationEntry,

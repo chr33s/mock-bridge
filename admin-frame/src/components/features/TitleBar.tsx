@@ -1,5 +1,5 @@
 import { Fragment } from "preact";
-import { adminPath, stores, titleBar as titleBarSignal, type TitleBarAction } from "../../store/features";
+import { adminPath, stores, titleBar, type TitleBarAction } from "../../store/features";
 
 const click = (action: TitleBarAction) => stores.titleBar.actions.click({ id: action.id });
 
@@ -19,10 +19,9 @@ function ActionButton({ action, variant }: { action: TitleBarAction; variant?: '
 
 /** The app's `<ui-title-bar>` or `<s-page>` title and actions. */
 export function TitleBar() {
-  const titleBar = titleBarSignal.value;
-  if (!titleBar || adminPath.value !== null) return null;
+  if (!titleBar.value || adminPath.value !== null) return null;
 
-  const { title, breadcrumb, primaryAction, secondaryActions } = titleBar;
+  const { title, breadcrumb, primaryAction, secondaryActions } = titleBar.value;
 
   return (
     <div

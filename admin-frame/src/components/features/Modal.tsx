@@ -1,18 +1,20 @@
 import { useEffect, useRef } from "preact/hooks";
-import { modalStates as modalStatesSignal } from "../../store/features";
+import { modalStates } from "../../store/features";
 
 type ModalElement = HTMLElement & { showOverlay?(): void; hideOverlay?(): void };
 
 export function Modal() {
-  const modalStates = modalStatesSignal.value;
+  const states = modalStates.value;
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    Object.entries(modalStates).forEach(([id, state]) => {
-      const modal = container.querySelector(`s-modal#${id}`) as ModalElement;
+    Object.entries(states).forEach(([id, state]) => {
+      // The app picks the id: it may not be a valid CSS identifier, e.g. React's `:r1:`.
+      const modal = container.querySelector<ModalElement>(`s-modal#${CSS.escape(id)}`);
+      if (!modal) return;
       const modalIsOpen = (modal.shadowRoot?.querySelector('dialog') as HTMLDialogElement)?.getAttribute('open') === '';
 
       if (state.open && !modalIsOpen) {
@@ -25,12 +27,12 @@ export function Modal() {
         }, 100);
       }
     });
-  }, [modalStates]);
+  }, [states]);
 
 
   return (
     <div id="modal-container" ref={containerRef}>
-      {Object.entries(modalStates).map(([id, state]) => (
+      {Object.entries(states).map(([id, state]) => (
         <s-modal key={id} id={id} heading={state.heading} padding="none">
           {state.content.src && <iframe src={state.content.src} />}
           {state.html && <div dangerouslySetInnerHTML={{ __html: state.html }} />}

@@ -231,6 +231,35 @@ describe('createTestBridge', () => {
     expect(navigator.canShare({})).toBe(false);
   });
 
+  it('reset() cancels a share still waiting for the merchant', async () => {
+    // Show the sheet instead of answering straight away.
+    bridge.stores.share.actions.setOutcome({ outcome: undefined });
+    const pending = navigator.share({ title: 'Fee' });
+    await vi.waitFor(() => expect(bridge.stores.share.state.peek().current).toEqual({ title: 'Fee' }));
+
+    bridge.reset();
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(bridge.stores.share.state.peek().current).toBeNull();
+  });
+
+  it('stores notify subscribers of every change with the previous state', () => {
+    const listener = vi.fn();
+    const unsubscribe = bridge.stores.navigation.subscribe(listener);
+    expect(listener).not.toHaveBeenCalled();
+
+    bridge.stores.navigation.actions.admin({ path: '/orders' });
+    bridge.stores.navigation.actions.open({ url: 'https://example.com', target: '_blank' });
+    expect(listener).toHaveBeenCalledTimes(2);
+    const [[afterAdmin, initial], [afterOpen, previous]] = listener.mock.calls;
+    expect([initial.adminPath, afterAdmin.adminPath]).toEqual([null, '/orders']);
+    expect(previous).toBe(afterAdmin);
+    expect(afterOpen.entries.slice(initial.entries.length).map((entry: { type: string }) => entry.type)).toEqual(['admin', 'open']);
+
+    unsubscribe();
+    bridge.stores.navigation.actions.admin({ path: '/products' });
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
   it('mirrors <s-app-window> and opens it from invoker commands', async () => {
     document.body.innerHTML = `
       <s-app-window id="editor" src="/editor"></s-app-window>

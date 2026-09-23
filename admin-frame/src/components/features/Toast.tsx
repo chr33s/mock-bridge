@@ -1,5 +1,5 @@
 import { useEffect } from "preact/hooks";
-import { stores, toasts as toastsSignal, type Toast as ToastData } from "../../store/features";
+import { stores, toasts, type Toast as ToastData } from "../../store/features";
 
 const DEFAULT_DURATION = 5000;
 
@@ -29,9 +29,7 @@ function ToastItem({ toast }: { toast: ToastData }) {
 }
 
 export function Toast() {
-  const toasts = toastsSignal.value;
-
-  if (toasts.length === 0) return null;
+  if (toasts.value.length === 0) return null;
 
   return (
     <div
@@ -46,7 +44,7 @@ export function Toast() {
         zIndex: 9999,
       }}
     >
-      {toasts.map(toast => <ToastItem key={toast.id} toast={toast} />)}
+      {toasts.value.map(toast => <ToastItem key={toast.id} toast={toast} />)}
     </div>
   );
 }

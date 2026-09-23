@@ -1,5 +1,5 @@
 import type { ComponentChildren } from "preact";
-import { adminPath as adminPathSignal, appNavItems as appNavItemsSignal, appUrl as appUrlSignal, stores, type NavItem } from "../store/features";
+import { adminPath, appNavItems, appUrl, stores, type NavItem } from "../store/features";
 import { TitleBar } from "./features/TitleBar";
 
 type Props = {
@@ -23,12 +23,8 @@ const defaultNavItems: NavItem[] = [
 const pathOf = (href: string, base: string) => new URL(href, base).pathname;
 
 export function Frame({ children, onNavigateApp }: Props) {
-  const appNavItems = appNavItemsSignal.value;
-  const adminPath = adminPathSignal.value;
-  const appUrl = appUrlSignal.value;
-
   // Use app nav items if provided, otherwise show default Shopify admin nav
-  const hasAppNav = appNavItems.length > 0;
+  const hasAppNav = appNavItems.value.length > 0;
 
   return (
     <div
@@ -65,7 +61,7 @@ export function Frame({ children, onNavigateApp }: Props) {
             {defaultNavItems.map((item, index) => (
               <s-button
                 key={`default-${index}`}
-                variant={adminPath !== null && pathOf(adminPath, location.origin) === item.href ? 'secondary' : 'tertiary'}
+                variant={adminPath.value !== null && pathOf(adminPath.value, location.origin) === item.href ? 'secondary' : 'tertiary'}
                 onClick={() => stores.navigation.set({ adminPath: item.href })}
               >
                 {item.label}
@@ -81,10 +77,10 @@ export function Frame({ children, onNavigateApp }: Props) {
                 App
               </div>
               <s-stack justifyContent="stretch">
-                {appNavItems.map((item, index) => (
+                {appNavItems.value.map((item, index) => (
                   <s-button
                     key={`app-${index}`}
-                    variant={adminPath === null && appUrl && pathOf(item.href, appUrl) === pathOf(appUrl, appUrl) ? 'secondary' : 'tertiary'}
+                    variant={adminPath.value === null && appUrl.value && pathOf(item.href, appUrl.value) === pathOf(appUrl.value, appUrl.value) ? 'secondary' : 'tertiary'}
                     onClick={() => onNavigateApp(item.href)}
                   >
                     {item.label}
