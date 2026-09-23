@@ -56,6 +56,6 @@ describe('Vitest integration (built dist)', { timeout: 120_000 }, () => {
 
   it.skipIf(!chromiumInstalled)('Browser Mode: the same tests pass in Chromium, with real Polaris', async () => {
     const output = await runFixture('browser', online ? {} : { MOCK_BRIDGE_OFFLINE: '1' });
-    expect(output).toMatch(online ? /Tests\s+8 passed/ : /Tests\s+7 passed/);
+    expect(output).toMatch(online ? /Tests\s+9 passed/ : /Tests\s+7 passed/);
   });
 });

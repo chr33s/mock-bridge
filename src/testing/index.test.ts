@@ -116,6 +116,67 @@ describe('createTestBridge', () => {
     await vi.waitFor(() => expect(bridge.modal('help')?.open).toBe(true));
   });
 
+  it('mirrors a page-level <ui-title-bar> and clicks its actions from the admin', async () => {
+    document.body.innerHTML = `
+      <ui-title-bar title="Fees">
+        <a variant="breadcrumb" href="/">Home</a>
+        <button variant="primary" id="save">Save</button>
+        <button tone="critical" disabled>Delete</button>
+        <section label="More"><button>Export</button><button>Duplicate</button></section>
+      </ui-title-bar>
+      <ui-modal id="help"><ui-title-bar title="Help"></ui-title-bar></ui-modal>`;
+    const saved = vi.fn();
+    document.getElementById('save')!.addEventListener('click', saved);
+
+    await vi.waitFor(() => expect(bridge.titleBar()?.title).toBe('Fees'));
+    expect(bridge.titleBar()).toMatchObject({
+      breadcrumb: { id: 'breadcrumb', label: 'Home', href: '/' },
+      primaryAction: { id: 'save', label: 'Save', variant: 'primary', disabled: false },
+      secondaryActions: [
+        { id: 'secondary-0', label: 'Delete', tone: 'critical', disabled: true },
+        { label: 'More', actions: [{ id: 'secondary-1-0', label: 'Export' }, { id: 'secondary-1-1', label: 'Duplicate' }] },
+      ],
+    });
+    expect(document.querySelector('ui-title-bar')!.getAttribute('style')).toContain('display: none');
+
+    bridge.clickTitleBarAction('Save');
+    expect(saved).toHaveBeenCalledOnce();
+    expect(() => bridge.clickTitleBarAction('Nope')).toThrow('No title bar action "Nope"');
+
+    document.querySelector('ui-title-bar')!.setAttribute('title', 'Fee rules');
+    await vi.waitFor(() => expect(bridge.titleBar()?.title).toBe('Fee rules'));
+    document.querySelector('ui-title-bar')!.remove();
+    await vi.waitFor(() => expect(bridge.titleBar()).toBeNull());
+  });
+
+  it('mirrors <s-page> headings and slotted actions', async () => {
+    document.body.innerHTML = `
+      <s-page heading="Fee">
+        <s-link slot="breadcrumb-actions" href="/fees">Fees</s-link>
+        <s-button slot="primary-action">Save</s-button>
+        <s-button slot="secondary-actions" commandfor="more">More</s-button>
+        <s-menu id="more"><s-button>Archive</s-button></s-menu>
+        <s-button>Not an action</s-button>
+      </s-page>`;
+    const saved = vi.fn();
+    const navigated = vi.fn((event: Event) => (event.target as Element).getAttribute('href'));
+    document.querySelector('[slot="primary-action"]')!.addEventListener('click', saved);
+    document.addEventListener('shopify:navigate', navigated);
+
+    await vi.waitFor(() => expect(bridge.titleBar()).toEqual({
+      title: 'Fee',
+      breadcrumb: { id: 'breadcrumb', label: 'Fees', href: '/fees', disabled: false, loading: false },
+      primaryAction: { id: 'primary', label: 'Save', disabled: false, loading: false },
+      secondaryActions: [{ label: 'More', actions: [{ id: 'secondary-0-0', label: 'Archive', disabled: false, loading: false }] }],
+    }));
+
+    bridge.clickTitleBarAction('primary');
+    bridge.clickTitleBarAction('breadcrumb');
+    expect(saved).toHaveBeenCalledOnce();
+    expect(navigated).toHaveReturnedWith('/fees');
+    document.removeEventListener('shopify:navigate', navigated);
+  });
+
   it('follows the app history and sends shopify://admin links to the admin', async () => {
     history.pushState(null, '', '/fees?embedded=1&host=abc&tab=all');
     expect(bridge.navigation().url).toBe('http://localhost:3000/fees?tab=all');

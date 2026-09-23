@@ -17,6 +17,8 @@ import {
   type SaveBarState,
   type ShareOutcome,
   type ShareRequest,
+  type TitleBarAction,
+  type TitleBarState,
   type Toast,
 } from '../core/stores.js';
 
@@ -30,6 +32,9 @@ export type {
   SaveBarState,
   ShareOutcome,
   ShareRequest,
+  TitleBarAction,
+  TitleBarGroup,
+  TitleBarState,
   Toast,
 } from '../core/stores.js';
 export type { BridgeHost } from '../core/protocol.js';
@@ -103,6 +108,10 @@ export interface TestBridge {
   /** The app's URL, the admin page the app sent the merchant to, and every navigation. */
   navigation(): NavigationState;
   appWindow(id: string): AppWindowState | undefined;
+  /** The page's `<ui-title-bar>` or `<s-page>` as the admin shows it, or `null` without one. */
+  titleBar(): TitleBarState | null;
+  /** Clicks a title bar action in the admin, by id or label, which clicks the app's element. */
+  clickTitleBarAction(idOrLabel: string): void;
   /** `navigator.share()` calls so far. */
   shares(): ShareRequest[];
   /** How many times the app called `window.print()`. */
@@ -280,6 +289,21 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
     loading: () => stores.loading.getState().isLoading,
     navigation: () => stores.navigation.getState(),
     appWindow: id => stores.appWindow.getState().appWindows[id],
+    titleBar: () => stores.titleBar.getState().titleBar,
+    clickTitleBarAction(idOrLabel) {
+      const titleBar = stores.titleBar.getState().titleBar;
+      const actions: TitleBarAction[] = titleBar ? [
+        titleBar.breadcrumb,
+        titleBar.primaryAction,
+        ...titleBar.secondaryActions.flatMap(item => 'actions' in item ? item.actions : [item]),
+      ].filter(action => action !== null) : [];
+      const action = actions.find(action => action.id === idOrLabel) ?? actions.find(action => action.label === idOrLabel);
+      if (!action) {
+        const known = actions.map(action => `"${action.label}"`).join(', ') || 'none';
+        throw new Error(`[mock-bridge] No title bar action "${idOrLabel}". Actions: ${known}.`);
+      }
+      stores.titleBar.getState().click({ id: action.id });
+    },
     shares: () => calls
       .filter(call => call.feature === 'share' && call.action === 'share')
       .map(call => call.payload as ShareRequest),
@@ -295,8 +319,10 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
       adminRequests.length = 0;
       // The app's window stays where it is.
       const { url } = stores.navigation.getState();
+      const { titleBar } = stores.titleBar.getState();
       resetFeatureStores(stores);
       stores.navigation.setState({ url });
+      stores.titleBar.setState({ titleBar });
       handlers = copy(baseline);
       applyAnswers();
     },

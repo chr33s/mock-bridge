@@ -78,7 +78,8 @@
 | `<ui-modal>` | ✅ Supported | With `<ui-title-bar>` support |
 | `<ui-save-bar>` | ✅ Supported | With `data-save-bar` form integration |
 | `<ui-nav-menu>` | ✅ Supported | Displays in admin sidebar |
-| `<ui-title-bar>` | ✅ Supported | Inside modals |
+| `<ui-title-bar>` | ✅ Supported | In modals, and as the page's title bar: `title`, breadcrumb, primary and secondary actions, and `<section label>` groups show in the admin; clicking one clicks the app's button |
+| `<s-page>` | ✅ Supported | `heading` and the `breadcrumb-actions`, `primary-action` and `secondary-actions` slots show in the admin's title bar (a secondary action with `commandfor` an `<s-menu>` is a group); clicking one clicks the app's button, and `<s-link>`s dispatch `shopify:navigate` |
 | `<s-app-window>` | ✅ Supported | `show()`, `hide()`, `toggle()`, `src`, `contentWindow`, `show`/`hide` events; full-screen in the admin |
 | Invoker commands | ✅ Supported | `<button commandfor="id" command="--show">` (and `--hide`, `--toggle`) for `<ui-modal>` and `<s-app-window>` |
 
@@ -862,6 +863,8 @@ Each test file gets a fresh bridge. Handlers registered at the top level or in `
 | `saveBar(id)` / `modal(id)` / `appWindow(id)` / `navMenu()` / `loading()` | Admin-side state. |
 | `navigation()` | `{ url, adminPath, entries }`: the app's URL, the admin page it sent the merchant to (`shopify://admin/products` is `'/products'`), and every navigation, including `window.open()` calls. |
 | `navigate(href)` | Picks an admin nav menu item; the app follows its own link as if clicked. |
+| `titleBar()` | The page's `<ui-title-bar>` or `<s-page>` as the admin shows it: `{ title, breadcrumb, primaryAction, secondaryActions }`, or `null`. |
+| `clickTitleBarAction(idOrLabel)` | Clicks a title bar action in the admin, by id (the element's `id`, else e.g. `'primary'`) or label; the app's button gets the click. |
 | `shares()` / `prints()` | `navigator.share()` calls, and how many times the app called `window.print()`. |
 | `adminRequests` / `calls` | Every Admin API request and every App Bridge action, in order. |
 | `idToken()` | A fresh session token. |

@@ -73,6 +73,30 @@ export type AppWindowState = {
   open: boolean;
 };
 
+export type TitleBarAction = {
+  /** The element's `id`, or its place in the title bar, e.g. `primary` or `secondary-1`. */
+  id: string;
+  label: string;
+  variant?: string;
+  tone?: string;
+  href?: string;
+  disabled?: boolean;
+  loading?: boolean;
+};
+
+/** Secondary actions grouped under one button: a `<section label>`, or an `<s-menu>` a button opens. */
+export type TitleBarGroup = {
+  label: string;
+  actions: TitleBarAction[];
+};
+
+export type TitleBarState = {
+  title: string;
+  breadcrumb: TitleBarAction | null;
+  primaryAction: TitleBarAction | null;
+  secondaryActions: Array<TitleBarAction | TitleBarGroup>;
+};
+
 export type ShareRequest = {
   title?: string;
   text?: string;
@@ -221,6 +245,18 @@ function createAppWindowStore(emit: FeatureEmitter) {
   ));
 }
 
+function createTitleBarStore(emit: FeatureEmitter) {
+  return createStore(combine(
+    // The app's `<ui-title-bar>` or `<s-page>`, or `null` without one.
+    { titleBar: null as TitleBarState | null },
+    set => ({
+      update: (payload: { titleBar: TitleBarState | null }) => set({ titleBar: payload.titleBar }),
+      /** The merchant clicked a title bar action. */
+      click: (payload: { id: string }) => emit('titleBar', 'click', payload),
+    }),
+  ));
+}
+
 function createShareStore() {
   let settle: ((outcome: ShareOutcome) => void) | undefined;
 
@@ -275,6 +311,7 @@ export function createFeatureStores(options: FeatureStoresOptions = {}) {
     resourcePicker: createResourcePickerStore(),
     navigation: createNavigationStore(emit),
     appWindow: createAppWindowStore(emit),
+    titleBar: createTitleBarStore(emit),
     share: createShareStore(),
     print: createPrintStore(),
   };

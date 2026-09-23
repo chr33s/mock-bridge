@@ -9,12 +9,13 @@ import { navigation } from './features/navigation.js';
 import { print } from './features/print.js';
 import { saveBar } from './features/save-bar.js';
 import { share } from './features/share.js';
+import { titleBar } from './features/title-bar.js';
 import { app, intents, picker, pos, reviews, scanner, scopes, shopifyQL, support, tools, user, webVitals } from './features/stubs.js';
 
 export interface CreateShopifyOptions {
   /**
-   * The app's window: its DOM is observed for `<ui-modal>`, `<ui-save-bar>`, `<ui-nav-menu>` and
-   * `<s-app-window>`, and its `open`, `print`, `history` and `navigator.share` are patched.
+   * The app's window: its DOM is observed for `<ui-modal>`, `<ui-save-bar>`, `<ui-nav-menu>`,
+   * `<ui-title-bar>`, `<s-page>` and `<s-app-window>`, and its `open`, `print`, `history` and `navigator.share` are patched.
    */
   window: BridgeWindow;
   /** Abort to disconnect the DOM observers and listeners and restore patched APIs. */
@@ -34,6 +35,7 @@ export function createShopify(host: BridgeHost, options: CreateShopifyOptions): 
   print(ctx);
   share(ctx);
   appWindow(ctx);
+  titleBar(ctx);
   commands(ctx);
 
   return {

@@ -1,5 +1,6 @@
 import { useStore } from "zustand";
 import { stores, type NavItem } from "../store/features";
+import { TitleBar } from "./features/TitleBar";
 
 type Props = {
   children: React.ReactNode;
@@ -112,7 +113,7 @@ export function Frame({ children, onNavigateApp }: Props) {
               borderBottom: '1px solid rgb(235, 235, 235)',
             }}
           >
-
+            <TitleBar />
           </div>
 
           {children}

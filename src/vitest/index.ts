@@ -15,6 +15,9 @@ export type {
   ShareRequest,
   TestBridge,
   TestBridgeOptions,
+  TitleBarAction,
+  TitleBarGroup,
+  TitleBarState,
   Toast,
 } from '../testing/index.js';
 

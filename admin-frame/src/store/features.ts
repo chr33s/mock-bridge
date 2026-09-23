@@ -1,7 +1,7 @@
 import type { FeatureEventMessage } from "../../../src/core/protocol";
 import { createFeatureStores } from "../../../src/core/stores";
 
-export type { AppWindowState, ModalContent, ModalState, NavItem, SaveBarState, ShareRequest, Toast } from "../../../src/core/stores";
+export type { AppWindowState, ModalContent, ModalState, NavItem, SaveBarState, ShareRequest, TitleBarAction, TitleBarGroup, TitleBarState, Toast } from "../../../src/core/stores";
 
 /** The embedded app's window. */
 export function appFrame(): Window | null {
