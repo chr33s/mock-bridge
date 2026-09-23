@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
-    "declarationMap": true,
+    "declarationMap": false,
     "sourceMap": true,
     // src/ isn't published, so maps carry their sources (no "missing source files" warnings).
     "inlineSources": true,

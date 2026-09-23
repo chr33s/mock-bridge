@@ -8,13 +8,13 @@ import { builtinEnvironments, type Environment } from 'vitest/runtime';
 import { createTestBridge } from '../testing/index.js';
 import { BRIDGE_KEY, type MockBridgeEnvironmentOptions } from './index.js';
 
-const STUB = '/* @getverdict/mock-bridge: window.shopify is provided by the test environment */';
+const STUB = '/* @chr33s/mock-bridge: window.shopify is provided by the test environment */';
 
 const PAGE_LOAD_TIMEOUT = 10_000;
 
 const DEFAULT_SCRIPTS: Record<string, string | null> = {
   'https://cdn.shopify.com/shopifycloud/app-bridge.js': STUB,
-  'https://cdn.shopify.com/shopifycloud/polaris.js': '/* @getverdict/mock-bridge: Polaris is not loaded in jsdom */',
+  'https://cdn.shopify.com/shopifycloud/polaris.js': '/* @chr33s/mock-bridge: Polaris is not loaded in jsdom */',
 };
 
 type JSDOMModule = typeof import('jsdom');

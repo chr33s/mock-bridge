@@ -1,6 +1,6 @@
 {
-  "name": "@getverdict/mock-bridge",
-  "version": "1.3.0",
+  "name": "@chr33s/mock-bridge",
+  "version": "2.0.0",
   "description": "Mock Shopify App Bridge for testing and development",
   "keywords": [
     "app-bridge",
@@ -23,9 +23,11 @@
   ],
   "files": [
     "dist/",
+    "!dist/server/dev.*",
     "admin-frame/dist/",
     "app-bridge/dist/",
-    "src/vitest/tester.html"
+    "src/vitest/tester.html",
+    "assets/img/mock-bridge-logo-200px.jpg"
   ],
   "type": "module",
   "main": "dist/index.js",

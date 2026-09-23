@@ -12,7 +12,7 @@ You likely have the `<AppProvider>` component rendered in your `app.tsx`. Set th
 </AppProvider>
 ```
 
-The port you choose to run `@getverdict/mock-bridge` might be different than `3080` so keep that in mind.
+The port you choose to run `@chr33s/mock-bridge` might be different than `3080` so keep that in mind.
 
 ## Set CSP headers
 

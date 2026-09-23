@@ -1,6 +1,6 @@
 /**
  * Vitest setup file: installs the mock `window.shopify` for each test file.
- * Added automatically by `mockBridge()` from `@getverdict/mock-bridge/vite`.
+ * Added automatically by `mockBridge()` from `@chr33s/mock-bridge/vite`.
  */
 import { afterAll, afterEach, beforeEach, inject } from 'vitest';
 import { createTestBridge, type TestBridge } from '../testing/index.js';

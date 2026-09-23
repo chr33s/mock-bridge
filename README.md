@@ -5,7 +5,7 @@
   
   A comprehensive browser testing solution for Shopify embedded apps. Mock the Shopify Admin environment and App Bridge APIs locally without needing real Shopify credentials, captchas, or 2FA.
   
-  [![npm version](https://badge.fury.io/js/@getverdict%2Fmock-bridge.svg)](https://www.npmjs.com/package/@getverdict/mock-bridge)
+  [![npm version](https://badge.fury.io/js/@chr33s%2Fmock-bridge.svg)](https://www.npmjs.com/package/@chr33s/mock-bridge)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 </div>
 
@@ -88,21 +88,21 @@
 ## 📦 Installation
 
 ```bash
-npm install @getverdict/mock-bridge --save-dev
+npm install @chr33s/mock-bridge --save-dev
 # or
-yarn add @getverdict/mock-bridge --dev
+yarn add @chr33s/mock-bridge --dev
 # or
-pnpm add @getverdict/mock-bridge --save-dev
+pnpm add @chr33s/mock-bridge --save-dev
 ```
 
 ## ⚡ Quick Start (2 Commands)
 
 ```bash
 # 1. Install the package
-npm install @getverdict/mock-bridge --save-dev
+npm install @chr33s/mock-bridge --save-dev
 
 # 2. Start the mock (just provide your app URL)
-npx @getverdict/mock-bridge http://localhost:3000
+npx @chr33s/mock-bridge http://localhost:3000
 ```
 
 **That's it!** Your app is now running in a mock Shopify Admin at http://localhost:3080
@@ -115,7 +115,7 @@ npx @getverdict/mock-bridge http://localhost:3000
 
 ```bash
 # Simplest - just provide your app URL
-npx @getverdict/mock-bridge http://localhost:3000
+npx @chr33s/mock-bridge http://localhost:3000
 
 # Auto-detects client ID from SHOPIFY_API_KEY environment variable
 # Auto-detects common app paths and configurations
@@ -125,10 +125,10 @@ npx @getverdict/mock-bridge http://localhost:3000
 
 ```bash
 # Generate a config file
-npx @getverdict/mock-bridge init
+npx @chr33s/mock-bridge init
 
 # Edit the generated mock.config.js, then run:
-npx @getverdict/mock-bridge
+npx @chr33s/mock-bridge
 ```
 
 ```bash
@@ -148,7 +148,7 @@ If you need more control, you can still use the programmatic API:
 
 ```javascript
 // scripts/start-mock-admin.js
-import { MockShopifyAdminServer } from "@getverdict/mock-bridge";
+import { MockShopifyAdminServer } from "@chr33s/mock-bridge";
 
 async function startMockAdmin() {
   const server = new MockShopifyAdminServer({
@@ -228,7 +228,7 @@ Replace your App Bridge script loading:
 
 ```typescript
 // app.tsx or _app.tsx
-import { setupAppBridge } from "@getverdict/mock-bridge/client";
+import { setupAppBridge } from "@chr33s/mock-bridge/client";
 
 useEffect(() => {
   setupAppBridge({
@@ -268,7 +268,7 @@ export async function authenticate(token: string) {
 import {
   validateSessionToken,
   createMockUser,
-} from "@getverdict/mock-bridge/auth";
+} from "@chr33s/mock-bridge/auth";
 
 export async function authenticate(token: string) {
   const authData = await validateSessionToken(token, {
@@ -313,7 +313,7 @@ export async function authenticate(token: string) {
 
 ```typescript
 // pages/api/products.ts
-import { validateSessionToken } from "@getverdict/mock-bridge/auth";
+import { validateSessionToken } from "@chr33s/mock-bridge/auth";
 
 export default async function handler(req, res) {
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -348,7 +348,7 @@ export default async function handler(req, res) {
 import {
   validateSessionToken,
   createMockUser,
-} from "@getverdict/mock-bridge/auth";
+} from "@chr33s/mock-bridge/auth";
 
 function createAuthMiddleware() {
   return async (req, res, next) => {
@@ -415,7 +415,7 @@ if (process.env.NODE_ENV === "development") {
 
 ```bash
 # Option 1: CLI command (simplest)
-npx @getverdict/mock-bridge http://localhost:3000
+npx @chr33s/mock-bridge http://localhost:3000
 
 # Option 2: Package.json scripts
 npm run dev:mock
@@ -437,25 +437,25 @@ npm run mock:admin            # Terminal 2: Mock admin
 
 ```bash
 # Basic usage with auto-detection
-npx @getverdict/mock-bridge http://localhost:3000
+npx @chr33s/mock-bridge http://localhost:3000
 
 # If installed locally, you can use the shorter command:
-# npm install @getverdict/mock-bridge --save-dev
+# npm install @chr33s/mock-bridge --save-dev
 # npx mock-bridge http://localhost:3000
 
 # Full configuration
-npx @getverdict/mock-bridge http://localhost:3000/shopify \
+npx @chr33s/mock-bridge http://localhost:3000/shopify \
   --client-id your-client-id \
   --port 3080 \
   --debug
 
 # Using config file
-npx @getverdict/mock-bridge init           # Create config file
-npx @getverdict/mock-bridge                # Use config file
+npx @chr33s/mock-bridge init           # Create config file
+npx @chr33s/mock-bridge                # Use config file
 
 # Help and version
-npx @getverdict/mock-bridge --help
-npx @getverdict/mock-bridge --version
+npx @chr33s/mock-bridge --help
+npx @chr33s/mock-bridge --version
 ```
 
 ### CLI Options
@@ -481,7 +481,7 @@ NODE_ENV=development                # Enables mock token support
 
 ### Configuration File
 
-Generate a configuration file with `npx @getverdict/mock-bridge init`:
+Generate a configuration file with `npx @chr33s/mock-bridge init`:
 
 ```javascript
 // mock.config.js
@@ -663,7 +663,7 @@ const mockUser = createMockUser({
 ```typescript
 // playwright.config.ts
 import { defineConfig } from "@playwright/test";
-import { MockShopifyAdminServer } from "@getverdict/mock-bridge";
+import { MockShopifyAdminServer } from "@chr33s/mock-bridge";
 
 let mockServer: MockShopifyAdminServer;
 
@@ -727,7 +727,7 @@ test("should handle authentication", async ({ page }) => {
 
 ```typescript
 // tests/api.test.ts
-import { MockShopifyAdminServer } from "@getverdict/mock-bridge";
+import { MockShopifyAdminServer } from "@chr33s/mock-bridge";
 import {
   createMockUser,
   validateSessionToken,
@@ -781,7 +781,7 @@ describe("API with Mock Tokens", () => {
 
 ## 🧪 Unit Testing with Vitest
 
-For component tests there's no need for the mock server or an iframe. `@getverdict/mock-bridge/vite` installs `window.shopify` in each Vitest test file, backed by an in-process host:
+For component tests there's no need for the mock server or an iframe. `@chr33s/mock-bridge/vite` installs `window.shopify` in each Vitest test file, backed by an in-process host:
 
 - **Admin API:** `fetch('shopify:admin/...')` and `/admin/api/...` requests are answered by handlers you register. Nothing goes over the network.
 - **Admin UI:** toasts, save bars, loading, modals and the nav menu are recorded so tests can assert on them.
@@ -792,13 +792,13 @@ For component tests there's no need for the mock server or an iframe. `@getverdi
 `browser: true` runs tests in a real Chromium with [Vitest Browser Mode](https://vitest.dev/guide/browser/). The test page loads Polaris from Shopify's CDN, as the admin does, so `s-page`, `s-button` and the other `s-*` components render and behave for real.
 
 ```bash
-npm install -D @getverdict/mock-bridge vitest @vitest/browser-playwright playwright
+npm install -D @chr33s/mock-bridge vitest @vitest/browser-playwright playwright
 npx playwright install chromium
 ```
 
 ```ts
 // vitest.config.ts
-import { mockBridge } from "@getverdict/mock-bridge/vite";
+import { mockBridge } from "@chr33s/mock-bridge/vite";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -813,7 +813,7 @@ export default defineConfig({
 Without `browser`, tests run in jsdom. It's faster to start and needs no browser, but `s-*` elements are inert: event handlers still fire, but nothing renders. The plugin sets `environment: 'jsdom'` unless you've set an environment yourself.
 
 ```bash
-npm install -D @getverdict/mock-bridge vitest jsdom
+npm install -D @chr33s/mock-bridge vitest jsdom
 ```
 
 ```ts
@@ -828,7 +828,7 @@ The same tests run in either mode.
 
 ```tsx
 // app.test.tsx
-import { bridge } from "@getverdict/mock-bridge/vitest";
+import { bridge } from "@chr33s/mock-bridge/vitest";
 import { render, screen, waitFor } from "@testing-library/preact";
 import App from "./app";
 
@@ -878,7 +878,7 @@ Plugin options: `shop`, `apiKey`, `clientSecret` (pass your app's secret to have
 
 ### Without Vitest
 
-`createTestBridge(options)` from `@getverdict/mock-bridge/testing` is the same host with no test-runner coupling: `const bridge = createTestBridge(); const uninstall = bridge.install(window);`.
+`createTestBridge(options)` from `@chr33s/mock-bridge/testing` is the same host with no test-runner coupling: `const bridge = createTestBridge(); const uninstall = bridge.install(window);`.
 
 ## ⚡ Vite dev server
 
@@ -886,7 +886,7 @@ The same plugin can run your app inside the mock admin during `vite dev`, withou
 
 ```ts
 // vite.config.ts
-import { mockBridge } from "@getverdict/mock-bridge/vite";
+import { mockBridge } from "@chr33s/mock-bridge/vite";
 
 export default defineConfig({
   plugins: [mockBridge({ shop: "my-shop.myshopify.com", dev: true })],

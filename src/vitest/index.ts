@@ -43,7 +43,7 @@ export const BRIDGE_KEY = '__mockBridge';
 export function getMockBridge(): TestBridge {
   const bridge = (globalThis as Record<string, unknown>)[BRIDGE_KEY] as TestBridge | undefined;
   if (!bridge) {
-    throw new Error('[mock-bridge] No bridge installed. Add mockBridge() from "@getverdict/mock-bridge/vite" to your Vitest plugins, or "@getverdict/mock-bridge/vitest/setup" to setupFiles.');
+    throw new Error('[mock-bridge] No bridge installed. Add mockBridge() from "@chr33s/mock-bridge/vite" to your Vitest plugins, or "@chr33s/mock-bridge/vitest/setup" to setupFiles.');
   }
   return bridge;
 }

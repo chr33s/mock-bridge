@@ -179,7 +179,7 @@ async function startCommand(options: CLIConfig): Promise<void> {
     if (finalConfig.clientId === STANDARD_MOCK_CLIENT_ID) {
       console.log(chalk.yellow('⚠️  Using default client ID for development.'));
       console.log(chalk.gray('   For production-like testing, provide your real client ID:'));
-      console.log(chalk.gray('   npx @getverdict/mock-bridge http://localhost:3000 --client-id your-real-id'));
+      console.log(chalk.gray('   npx @chr33s/mock-bridge http://localhost:3000 --client-id your-real-id'));
       console.log();
     }
 
