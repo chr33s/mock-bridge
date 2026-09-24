@@ -1,9 +1,12 @@
+import { useEffect } from "preact/hooks";
 import type { Config } from "../hooks/useConfig";
-import { useMockBridge } from "../hooks/useMockBridge";
-import { APP_SANDBOX, signalMockEnvironment } from "../lib/app";
+import { useEmbedUrl } from "../hooks/useEmbedUrl";
+import { APP_SANDBOX, appBase, signalMockEnvironment } from "../lib/app";
+import { clearAppState } from "../store/features";
 
 export function EmbeddedApp({ config, entry }: { config: Config; entry: string }) {
-  const iframeSrc = useMockBridge(config, entry);
+  const iframeSrc = useEmbedUrl(config, `${appBase(config)}${entry}`);
+  useEffect(() => clearAppState, []);
 
   if (!iframeSrc) return null;
 

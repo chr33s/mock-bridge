@@ -1,4 +1,4 @@
-import { saveBars, stores } from "../../store/features";
+import { appFrame, saveBarFrames, saveBars, stores } from "../../store/features";
 
 export function SaveBar() {
   const { hide } = stores.saveBar.actions;
@@ -13,8 +13,7 @@ export function SaveBar() {
 
   const handleSave = () => {
     // Send message to iframe to trigger save
-    const iframe = document.getElementById('app-iframe') as HTMLIFrameElement;
-    iframe?.contentWindow?.postMessage({
+    (saveBarFrames.get(activeSaveBar.id) ?? appFrame())?.postMessage({
       type: 'SAVE_BAR_SAVE',
       id: activeSaveBar.id,
     }, '*');
@@ -28,8 +27,7 @@ export function SaveBar() {
     }
 
     // Send message to iframe to trigger discard
-    const iframe = document.getElementById('app-iframe') as HTMLIFrameElement;
-    iframe?.contentWindow?.postMessage({
+    (saveBarFrames.get(activeSaveBar.id) ?? appFrame())?.postMessage({
       type: 'SAVE_BAR_DISCARD',
       id: activeSaveBar.id,
     }, '*');

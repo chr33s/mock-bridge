@@ -1,4 +1,11 @@
-import type { AdminFetchRequest, BridgeHost, FeatureActionRequestMessage, FeatureEvent, FeatureEventMessage } from '../../src/core/protocol';
+import type {
+  AdminFetchRequest,
+  BridgeHost,
+  FeatureActionRequestMessage,
+  FeatureActionResponseMessage,
+  FeatureEvent,
+  FeatureEventMessage,
+} from '../../src/core/protocol';
 import { decodeJwt } from '../../src/auth/jwt';
 
 type AdminApiConfig = 'mock' | { proxy: string } | { accessToken: string };
@@ -19,6 +26,8 @@ function detectMockServerUrl(): string {
 export function createPostMessageHost(): BridgeHost {
   const mockServerUrl = detectMockServerUrl();
   const params = new URLSearchParams(window.location.search);
+  // This page: when the admin hears from a new one, it drops what the previous page showed.
+  const page = Math.random().toString(36).slice(2, 10);
   let token: { value: string; exp: number } | null = null;
   let pendingToken: Promise<string> | null = null;
 
@@ -78,6 +87,7 @@ export function createPostMessageHost(): BridgeHost {
         const message: FeatureActionRequestMessage = {
           type: 'FEATURE_ACTION_REQUEST',
           action_id: actionId,
+          page,
           feature,
           action,
           payload: payload === undefined ? undefined : JSON.parse(JSON.stringify(payload)),
@@ -92,7 +102,9 @@ export function createPostMessageHost(): BridgeHost {
           if (event.data?.type !== 'FEATURE_ACTION_RESPONSE' || event.data.action_id !== actionId) return;
           clearTimeout(timeout);
           window.removeEventListener('message', handler);
-          resolve(event.data.payload);
+          const { payload, error } = event.data as FeatureActionResponseMessage;
+          if (error !== undefined) reject(new Error(`${feature}.${action} failed in the admin: ${error}`));
+          else resolve(payload);
         }
 
         window.addEventListener('message', handler);

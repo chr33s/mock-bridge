@@ -1,4 +1,5 @@
 import type { ShareRequest } from '../stores.js';
+import { parseUrl } from '../url.js';
 import { patchMember, type FeatureContext } from './context.js';
 
 /** `navigator.share()` opens the admin's share sheet, which works inside the app's iframe. */
@@ -15,11 +16,9 @@ export function share(ctx: FeatureContext) {
     if (title !== undefined) result.title = String(title);
     if (text !== undefined) result.text = String(text);
     if (url !== undefined) {
-      try {
-        result.url = new URL(url, window.document.baseURI).href;
-      } catch {
-        throw new TypeError(`navigator.share(): invalid URL ${url}`);
-      }
+      const parsed = parseUrl(url, window.document.baseURI);
+      if (!parsed) throw new TypeError(`navigator.share(): invalid URL ${url}`);
+      result.url = parsed.href;
     }
     if (files?.length) result.files = files.map(({ name, type, size }) => ({ name, type, size }));
     return result;

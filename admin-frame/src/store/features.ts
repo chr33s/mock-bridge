@@ -15,7 +15,24 @@ export const stores = createFeatureStores({
     const message: FeatureEventMessage = { type: 'FEATURE_EVENT', feature, event, payload };
     appFrame()?.postMessage(message, '*');
   },
+  // The admin runs for a whole dev session; it only needs the latest entries.
+  maxNavigationEntries: 100,
 });
+
+/** The frame each save bar came from, which its Save and Discard buttons answer. */
+export const saveBarFrames = new Map<string, Window>();
+
+/**
+ * The app's page is gone (an admin page shows, the app reloads or loads a new page): what it
+ * showed over the admin goes with it, and the next page reports its own. The nav menu stays, to
+ * get back. Nothing is sent to the app: the page that would hear it is gone.
+ */
+export function clearAppState() {
+  for (const store of [stores.modal, stores.saveBar, stores.appWindow, stores.titleBar, stores.loading, stores.share]) {
+    store.reset({ notify: false });
+  }
+  saveBarFrames.clear();
+}
 
 // What the admin renders. A component reading one re-renders only when its value changes.
 export const adminPath = computed(() => stores.navigation.state.value.adminPath);

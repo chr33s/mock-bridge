@@ -81,7 +81,7 @@ export interface TestBridge {
   readonly host: BridgeHost;
   /** The admin-side state (toasts, save bars, modals, ...). */
   readonly stores: FeatureStores;
-  /** Every `host.invoke` call, in order. */
+  /** Every App Bridge call the app made, in order. What the bridge mirrors from the page (its URL, title bar, nav menu, elements) is in `stores`. */
   readonly calls: readonly FeatureCall[];
   /** Every Admin API request, in order. */
   readonly adminRequests: readonly AdminRequest[];
@@ -123,7 +123,10 @@ export interface TestBridge {
 
   /** Keeps the current handlers across `reset()` (like msw's initial handlers). */
   checkpoint(): void;
-  /** Clears recorded calls and admin state, and restores handlers to the last checkpoint. */
+  /**
+   * Clears recorded calls and admin state, and restores handlers to the last checkpoint. What the
+   * page's elements mirror (title bar, nav menu, modals, save bars, app windows) stays, closed.
+   */
   reset(): void;
   /** Disconnects DOM observers. */
   dispose(): void;
@@ -204,8 +207,8 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
   const host: BridgeHost = {
     config: { apiKey: resolved.apiKey, shop: resolved.shop, locale: resolved.locale },
     environment: { embedded: resolved.embedded },
-    async invoke(feature, action, payload) {
-      calls.push({ feature, action, payload });
+    async invoke(feature, action, payload, options) {
+      if (!options?.mirror) calls.push({ feature, action, payload });
       return runFeatureAction(stores, feature, action, payload).result;
     },
     listen(listener) {
@@ -316,14 +319,10 @@ export function createTestBridge(options: TestBridgeOptions = {}): TestBridge {
       baseline = copy(handlers);
     },
     reset() {
+      // Closing app windows tells the app, which may call App Bridge back: clear the log after.
+      resetFeatureStores(stores, { keepMirrored: true });
       calls.length = 0;
       adminRequests.length = 0;
-      // The app's window stays where it is.
-      const { url } = stores.navigation.state.peek();
-      const { titleBar } = stores.titleBar.state.peek();
-      resetFeatureStores(stores);
-      stores.navigation.set({ url });
-      stores.titleBar.set({ titleBar });
       handlers = copy(baseline);
       applyAnswers();
     },

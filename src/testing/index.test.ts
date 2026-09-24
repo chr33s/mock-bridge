@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { verifySessionToken } from '../auth/jwt';
+import { createFeatureStores } from '../core/stores';
 import { createTestBridge, type TestBridge } from './index';
 
 const graphql = (query: string, variables?: object) =>
@@ -29,6 +30,11 @@ describe('createTestBridge', () => {
     expect(window.shopify).toBe(bridge.shopify);
     expect(shopify.config).toEqual({ apiKey: 'key', shop: 'my-shop.myshopify.com', locale: 'en' });
     expect(shopify.environment.embedded).toBe(true);
+  });
+
+  it('starts with no recorded calls; the stores have the page as installed', () => {
+    expect(bridge.calls).toEqual([]);
+    expect(bridge.navigation().url).toBe(location.href);
   });
 
   it('signs id tokens with the client secret', async () => {
@@ -177,6 +183,23 @@ describe('createTestBridge', () => {
     document.removeEventListener('shopify:navigate', navigated);
   });
 
+  it('runs a title bar button\'s handlers before following its href, unless they cancel', async () => {
+    document.body.innerHTML = '<s-page heading="Fee"><s-button slot="primary-action" href="/fees/new">New</s-button></s-page>';
+    const button = document.querySelector('s-button')!;
+    const events: string[] = [];
+    const navigated = () => events.push('navigate');
+    document.addEventListener('shopify:navigate', navigated);
+    await vi.waitFor(() => expect(bridge.titleBar()?.primaryAction?.label).toBe('New'));
+
+    button.addEventListener('click', () => events.push('click'), { once: true });
+    bridge.clickTitleBarAction('New');
+    button.addEventListener('click', event => event.preventDefault(), { once: true });
+    bridge.clickTitleBarAction('New');
+
+    expect(events).toEqual(['click', 'navigate']);
+    document.removeEventListener('shopify:navigate', navigated);
+  });
+
   it('follows the app history and sends shopify://admin links to the admin', async () => {
     history.pushState(null, '', '/fees?embedded=1&host=abc&tab=all');
     expect(bridge.navigation().url).toBe('http://localhost:3000/fees?tab=all');
@@ -284,6 +307,138 @@ describe('createTestBridge', () => {
     expect(appWindow.contentWindow).toBeNull();
   });
 
+  it('opens <s-app-window> from a Polaris invoker without a command (--auto)', async () => {
+    document.body.innerHTML = `
+      <s-app-window id="editor" src="/editor"></s-app-window>
+      <s-button commandfor="editor">Edit</s-button>`;
+    await vi.waitFor(() => expect(bridge.appWindow('editor')).toBeDefined());
+    (document.querySelector('s-button') as HTMLElement).click();
+    await vi.waitFor(() => expect(bridge.appWindow('editor')?.open).toBe(true));
+  });
+
+  it('forgets an <s-app-window> that leaves the page, and mirrors it again if it comes back', async () => {
+    document.body.innerHTML = '<s-app-window id="editor" src="/editor"></s-app-window>';
+    const element = document.getElementById('editor') as unknown as SAppWindowElement & HTMLElement;
+    await vi.waitFor(() => expect(bridge.appWindow('editor')).toBeDefined());
+    await element.show?.();
+
+    element.remove();
+    await vi.waitFor(() => expect(bridge.appWindow('editor')).toBeUndefined());
+    const events: string[] = [];
+    element.addEventListener('show', () => events.push('show'));
+    bridge.stores.appWindow.actions.show({ id: 'editor' });
+    expect(events).toEqual([]);
+
+    document.body.append(element);
+    await vi.waitFor(() => expect(bridge.appWindow('editor')).toEqual({ id: 'editor', src: 'http://localhost:3000/editor', open: true }));
+  });
+
+  it('records a hash navigation once', async () => {
+    const before = bridge.navigation().entries.length;
+    location.hash = '#details';
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(bridge.navigation().entries.slice(before)).toEqual([
+      { type: 'history', url: expect.stringMatching(/#details$/), replace: true },
+    ]);
+  });
+
+  it('does not record replaceState calls that keep the URL', () => {
+    const before = bridge.navigation().entries.length;
+    history.replaceState({ scroll: 10 }, '');
+    history.replaceState({ scroll: 20 }, '', location.href);
+    expect(bridge.navigation().entries.length).toBe(before);
+  });
+
+  it('hides a form save bar when its changed form leaves the page', async () => {
+    document.body.innerHTML = '<form data-save-bar><input name="title" value="a"></form>';
+    const form = document.querySelector('form')!;
+    const input = form.querySelector('input')!;
+    await vi.waitFor(() => expect(Object.keys(bridge.stores.saveBar.state.peek().saveBars)).toHaveLength(1));
+    input.value = 'b';
+    form.dispatchEvent(new Event('input', { bubbles: true }));
+    const [id] = Object.keys(bridge.stores.saveBar.state.peek().saveBars);
+    await vi.waitFor(() => expect(bridge.saveBar(id)?.visible).toBe(true));
+
+    form.remove();
+    await vi.waitFor(() => expect(bridge.saveBar(id)).toBeUndefined());
+  });
+
+  it('gives each form its own save bar, which shows again after reset() on the next change', async () => {
+    document.body.innerHTML = '<form data-save-bar><input name="a" value="1"></form><form data-save-bar><input name="b" value="1"></form>';
+    await vi.waitFor(() => expect(Object.keys(bridge.stores.saveBar.state.peek().saveBars)).toHaveLength(2));
+    const form = document.querySelector('form')!;
+    const edit = (value: string) => {
+      form.querySelector('input')!.value = value;
+      form.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    edit('2');
+    const visible = () => Object.values(bridge.stores.saveBar.state.peek().saveBars).filter(saveBar => saveBar.visible);
+    await vi.waitFor(() => expect(visible()).toHaveLength(1));
+
+    bridge.reset();
+    expect(visible()).toHaveLength(0);
+    edit('3');
+    await vi.waitFor(() => expect(visible()).toHaveLength(1));
+  });
+
+  it('forgets modals and nav menus that leave the page', async () => {
+    document.body.innerHTML = '<ui-modal id="confirm"><p>Sure?</p></ui-modal><ui-nav-menu><a href="/fees">Fees</a></ui-nav-menu>';
+    await vi.waitFor(() => expect(bridge.navMenu()).toHaveLength(1));
+    await shopify.modal.show('confirm');
+    expect(bridge.modal('confirm')?.open).toBe(true);
+
+    document.body.innerHTML = '';
+    await vi.waitFor(() => expect(bridge.modal('confirm')).toBeUndefined());
+    expect(bridge.navMenu()).toEqual([]);
+  });
+
+  it('follows the link, not an icon inside it, and records window.open(url, "_self")', async () => {
+    document.body.innerHTML = '<a href="shopify://admin/products"><svg><use href="#icon"></use></svg>Products</a>';
+    const icon = document.querySelector('use')!;
+    expect(icon.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))).toBe(false);
+    expect(bridge.navigation().adminPath).toBe('/products');
+
+    window.open('/checkout', '_self');
+    expect(bridge.navigation().entries.at(-1)).toEqual({ type: 'open', url: 'http://localhost:3000/checkout', target: '_self' });
+  });
+
+  it('reports a new app window src once', async () => {
+    document.body.innerHTML = '<s-app-window id="editor" src="/editor"></s-app-window>';
+    const element = document.getElementById('editor') as unknown as SAppWindowElement & HTMLElement;
+    await vi.waitFor(() => expect(bridge.appWindow('editor')).toBeDefined());
+    const updates: unknown[] = [];
+    const unsubscribe = bridge.stores.appWindow.subscribe(state => updates.push(state.appWindows.editor?.src));
+    element.src = '/editor/2';
+    await new Promise(resolve => setTimeout(resolve, 10));
+    unsubscribe();
+    expect(updates).toEqual(['http://localhost:3000/editor/2']);
+  });
+
+  it('reset() keeps what the page mirrors, closed', async () => {
+    document.body.innerHTML = '<s-app-window id="editor" src="/editor"></s-app-window>';
+    const element = document.getElementById('editor') as unknown as SAppWindowElement & HTMLElement;
+    await vi.waitFor(() => expect(bridge.appWindow('editor')).toBeDefined());
+    const events: string[] = [];
+    element.addEventListener('hide', () => {
+      events.push('hide');
+      shopify.toast.show('Closed');
+    });
+    await element.show?.();
+
+    element.addEventListener('hide', () => window.print());
+
+    bridge.reset();
+
+    expect(bridge.appWindow('editor')).toEqual({ id: 'editor', src: 'http://localhost:3000/editor', open: false });
+    expect(events).toEqual(['hide']);
+    // Told once every store is reset, so a store reset later doesn't undo what the app did.
+    expect(bridge.prints()).toBe(1);
+    // What the app did as the window closed belongs to the test that left it open.
+    expect(bridge.toasts()).toEqual([]);
+    await element.show?.();
+    expect(bridge.appWindow('editor')?.open).toBe(true);
+  });
+
   it('reset() clears state and restores handlers to the checkpoint', async () => {
     bridge.graphql('Kept', () => ({ data: {} }));
     bridge.checkpoint();
@@ -312,5 +467,13 @@ describe('createTestBridge', () => {
     expect(window.print).not.toBe(patched.print);
     expect(history.pushState).toBe(History.prototype.pushState);
     expect(navigator.share).toBeUndefined();
+  });
+});
+
+describe('createFeatureStores', () => {
+  it('keeps the latest maxNavigationEntries navigation entries', () => {
+    const stores = createFeatureStores({ maxNavigationEntries: 2 });
+    for (const path of ['/a', '/b', '/c']) stores.navigation.actions.admin({ path });
+    expect(stores.navigation.state.peek().entries.map(entry => entry.type === 'admin' && entry.path)).toEqual(['/b', '/c']);
   });
 });

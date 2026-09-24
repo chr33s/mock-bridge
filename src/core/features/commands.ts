@@ -1,6 +1,8 @@
 import type { FeatureContext } from './context.js';
 
 const METHODS: Record<string, 'show' | 'hide' | 'toggle'> = {
+  // Polaris' default `command`: a modal or app window's default is to open.
+  '--auto': 'show',
   '--show': 'show',
   '--hide': 'hide',
   '--toggle': 'toggle',
@@ -25,7 +27,9 @@ export function commands(ctx: FeatureContext) {
     const invoker = event.composedPath().find((node): node is Element => node instanceof window.Element && commandFor(node) !== null);
     if (!invoker) return;
     const target = invoker.ownerDocument.getElementById(commandFor(invoker)!);
-    const command = invoker.getAttribute('command') ?? (invoker as { command?: string }).command ?? '';
+    // Polaris invokers (`<s-button>`, `<s-clickable>`) default to `--auto`, even before they upgrade.
+    const command = invoker.getAttribute('command') ?? (invoker as { command?: string }).command
+      ?? (invoker.localName.startsWith('s-') ? '--auto' : '');
     const method = METHODS[command];
     if (!target || !method || !TARGETS.includes(target.localName)) return;
     (target as unknown as Partial<Record<typeof method, () => unknown>>)[method]?.();

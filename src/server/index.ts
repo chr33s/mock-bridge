@@ -157,7 +157,11 @@ export class MockShopifyAdminServer {
 
     // Mock Admin API proxy endpoint - handles intercepted fetch calls from App Bridge
     this.app.post('/mock-admin-api', (req: Request, res: Response) => {
-      const { url, method, body } = req.body;
+      // body-parser 2 leaves `req.body` undefined when no parser matched the request.
+      const { url, method, body } = req.body ?? {};
+      if (typeof url !== 'string') {
+        return res.status(400).json({ errors: [{ message: 'Expected a JSON body with a url' }] });
+      }
 
       if (this.config.debug) {
         console.log(`[MockShopify] Admin API proxy: ${method} ${url}`);
@@ -174,7 +178,7 @@ export class MockShopifyAdminServer {
 
     // Mock OAuth token exchange endpoint
     this.app.post('/admin/oauth/access_token', (req: Request, res: Response) => {
-      const { client_id, client_secret, subject_token } = req.body;
+      const { client_id, client_secret, subject_token } = req.body ?? {};
 
       if (client_id !== this.config.clientId! || client_secret !== this.config.clientSecret!) {
         return res.status(401).json({ error: 'invalid_client' });

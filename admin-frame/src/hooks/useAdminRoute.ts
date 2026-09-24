@@ -33,7 +33,8 @@ export function useAdminRoute(config: Config | null) {
     const apply = () => {
       const { pathname, search, hash } = location;
       if (pathname === appsPrefix || pathname.startsWith(`${appsPrefix}/`)) {
-        showApp(pathname.slice(appsPrefix.length) + search + hash);
+        // `/admin/apps/<client id>` alone is the app's entry page, `appPath`.
+        showApp((pathname.slice(appsPrefix.length) || (config.appPath ?? '')) + search + hash);
       } else if (pathname === '/admin' || pathname.startsWith('/admin/')) {
         stores.navigation.set({ adminPath: (pathname.slice('/admin'.length) || '/') + search + hash });
       } else {
@@ -50,9 +51,9 @@ export function useAdminRoute(config: Config | null) {
     if (!config) return;
 
     return stores.navigation.subscribe((state, previous) => {
-      for (const entry of state.entries.slice(previous.entries.length)) {
-        if (entry.type === 'admin' && entry.newContext) window.open(adminUrl(entry.path), '_blank');
-      }
+      // Each navigation appends one entry; the oldest drop off once the history is full.
+      const entry = state.entries !== previous.entries ? state.entries.at(-1) : undefined;
+      if (entry?.type === 'admin' && entry.newContext) window.open(adminUrl(entry.path), '_blank');
 
       if (state.adminPath !== null && state.adminPath !== previous.adminPath) {
         const url = adminUrl(state.adminPath);
@@ -77,5 +78,14 @@ export function useAdminRoute(config: Config | null) {
     showApp(path);
   }, [config, appsPrefix, showApp]);
 
-  return { route, navigateApp };
+  /** Goes back to the app, where it last was. */
+  const openApp = useCallback(() => {
+    if (!config) return;
+    const { url } = stores.navigation.state.peek();
+    const path = (url ? appPath(config, url) : null) ?? config.appPath ?? '';
+    history.pushState(null, '', `${appsPrefix}${path}`);
+    showApp(path);
+  }, [config, appsPrefix, showApp]);
+
+  return { route, navigateApp, openApp };
 }

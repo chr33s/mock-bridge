@@ -14,11 +14,11 @@ import { adminPath } from "./store/features"
 
 function App() {
   const config = useConfig()
-  const { route, navigateApp } = useAdminRoute(config)
+  const { route, navigateApp, openApp } = useAdminRoute(config)
   useBridgeMessages(config)
 
   return (
-    <Frame onNavigateApp={navigateApp}>
+    <Frame config={config} onNavigateApp={navigateApp} onOpenApp={openApp}>
       <Loading />
       <Modal />
       <SaveBar />

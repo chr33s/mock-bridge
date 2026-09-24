@@ -127,8 +127,8 @@ npx @chr33s/mock-bridge http://localhost:3000
 # Generate a config file
 npx @chr33s/mock-bridge init
 
-# Edit the generated mock.config.js, then run:
-npx @chr33s/mock-bridge
+# Edit the generated mock.config.mjs, then run:
+npx @chr33s/mock-bridge --config mock.config.mjs
 ```
 
 ```bash
@@ -451,7 +451,7 @@ npx @chr33s/mock-bridge http://localhost:3000/shopify \
 
 # Using config file
 npx @chr33s/mock-bridge init           # Create config file
-npx @chr33s/mock-bridge                # Use config file
+npx @chr33s/mock-bridge --config mock.config.mjs  # Use config file
 
 # Help and version
 npx @chr33s/mock-bridge --help
@@ -467,7 +467,7 @@ npx @chr33s/mock-bridge --version
 | `--client-secret` | Mock client secret                   | `"mock-secret-12345"`           |
 | `--shop`          | Mock shop domain                     | `"test-shop.myshopify.com"`     |
 | `--port`          | Mock admin port                      | `3080`                          |
-| `--config`        | Config file path                     | `"mock.config.js"`              |
+| `--config`        | Config file path, e.g. `mock.config.mjs` | —                           |
 | `--debug`         | Enable debug logging                 | `false`                         |
 
 ### Environment Variables
@@ -484,8 +484,8 @@ NODE_ENV=development                # Enables mock token support
 Generate a configuration file with `npx @chr33s/mock-bridge init`:
 
 ```javascript
-// mock.config.js
-module.exports = {
+// mock.config.mjs
+export default {
   appUrl: "http://localhost:3000/shopify", // Include path in URL
   clientId: process.env.SHOPIFY_API_KEY,
   clientSecret: "mock-secret-12345",
@@ -577,22 +577,22 @@ const server = new MockShopifyAdminServer({
 Control how `fetch('/admin/api/...')` requests are handled:
 
 ```javascript
-// mock.config.js
+// mock.config.mjs (pick one)
 
 // Option 1: Mock data (default) - returns fake data, works offline
-module.exports = {
+export default {
   adminApi: "mock",
 };
 
 // Option 2: Proxy through your app - for real data via your backend
-module.exports = {
+export default {
   adminApi: {
     proxy: "http://localhost:3000/api/shopify-proxy",
   },
 };
 
 // Option 3: Direct to Shopify - requires access token from installed shop
-module.exports = {
+export default {
   adminApi: {
     accessToken: process.env.SHOPIFY_ACCESS_TOKEN,
   },
@@ -866,7 +866,7 @@ Each test file gets a fresh bridge. Handlers registered at the top level or in `
 | `titleBar()` | The page's `<ui-title-bar>` or `<s-page>` as the admin shows it: `{ title, breadcrumb, primaryAction, secondaryActions }`, or `null`. |
 | `clickTitleBarAction(idOrLabel)` | Clicks a title bar action in the admin, by id (the element's `id`, else e.g. `'primary'`) or label; the app's button gets the click. |
 | `shares()` / `prints()` | `navigator.share()` calls, and how many times the app called `window.print()`. |
-| `adminRequests` / `calls` | Every Admin API request and every App Bridge action, in order. |
+| `adminRequests` / `calls` | Every Admin API request and every App Bridge call the app made, in order. What the bridge mirrors from the page (URL, title bar, nav menu, elements) is in `stores`. |
 | `idToken()` | A fresh session token. |
 | `stores` | The admin state the admin-frame renders from, per feature: `state` (a `@preact/signals-core` signal), `subscribe((state, previous) => …)`, `actions`, `set(change)` and `reset()`. Prefer `subscribe` or `state.subscribe()`: your own `effect()` only tracks `state` if it comes from the same copy of `@preact/signals-core`. |
 

@@ -1,9 +1,12 @@
 import type { TitleBarAction, TitleBarGroup, TitleBarState } from '../stores.js';
-import { fire, onEvent, type FeatureContext } from './context.js';
+import { mirror, observeElements, onEvent, type FeatureContext } from './context.js';
 
 const ACTIONS = ['button', 'a', 's-button', 's-link'];
 // The attributes the title bar is built from; others (like `style`) don't change it.
 const ATTRIBUTES = ['title', 'heading', 'slot', 'id', 'label', 'variant', 'tone', 'href', 'disabled', 'loading', 'commandfor'];
+// Elements whose arrival or departure can change which title bar shows, or an `<s-page>`'s menus.
+const SOURCES = ['ui-title-bar', 's-page', 's-menu'];
+const CONTENT: MutationObserverInit = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRIBUTES };
 
 /**
  * Mirrors the page's title bar into the admin: a `<ui-title-bar>` outside a modal, or else an
@@ -54,21 +57,29 @@ export function titleBar(ctx: FeatureContext) {
   }
 
   // <s-page heading> with slotted actions; a secondary action opening an <s-menu> is a group.
+  // Only its own attributes, its children's `slot`s and the slotted actions (and menus) matter,
+  // not the page content, which can change often.
   function fromPage(page: Element): TitleBarState {
+    content.observe(page, { childList: true, attributes: true, attributeFilter: ATTRIBUTES });
+    for (const child of Array.from(page.children)) content.observe(child, { attributes: true, attributeFilter: ['slot'] });
+    const watch = (element: Element) => {
+      content.observe(element, CONTENT);
+      return element;
+    };
     const slotted = (slot: string) => Array.from(page.children).filter(child => child.getAttribute('slot') === slot && isAction(child));
-    const [breadcrumb] = slotted('breadcrumb-actions');
-    const [primary] = slotted('primary-action');
+    const [breadcrumb] = slotted('breadcrumb-actions').map(watch);
+    const [primary] = slotted('primary-action').map(watch);
     const menu = (element: Element) => {
       const id = element.getAttribute('commandfor');
       const target = id ? document.getElementById(id) : null;
-      return target?.localName === 's-menu' ? target : null;
+      return target?.localName === 's-menu' ? watch(target) : null;
     };
     const heading = (page as { heading?: unknown }).heading;
     return {
       title: page.getAttribute('heading') || (typeof heading === 'string' ? heading : ''),
       breadcrumb: breadcrumb ? action(breadcrumb, 'breadcrumb') : null,
       primaryAction: primary ? action(primary, 'primary') : null,
-      secondaryActions: slotted('secondary-actions').map((child, index) => {
+      secondaryActions: slotted('secondary-actions').map(watch).map((child, index) => {
         const target = menu(child);
         return target
           ? group(child.textContent?.trim() || '', Array.from(target.children).filter(isAction), `secondary-${index}`)
@@ -84,43 +95,60 @@ export function titleBar(ctx: FeatureContext) {
       if (bar instanceof window.HTMLElement && bar.style.display !== 'none') bar.style.display = 'none';
     }
     const bar = bars.at(-1);
-    if (bar) return fromTitleBar(bar);
+    if (bar) {
+      content.observe(bar, CONTENT);
+      return fromTitleBar(bar);
+    }
     const page = Array.from(document.querySelectorAll('s-page')).filter(page => !page.closest('ui-modal')).at(-1);
     return page ? fromPage(page) : null;
   }
 
   function sync() {
     elements = new Map();
+    content.disconnect();
     const state = current();
     const json = JSON.stringify(state);
     if (json === sent) return;
     sent = json;
-    fire(ctx, 'titleBar', 'update', { titleBar: state });
+    mirror(ctx, 'titleBar', 'update', { titleBar: state });
   }
 
   let scheduled = false;
-  const observer = new window.MutationObserver(() => {
+  const schedule = () => {
     if (scheduled) return;
     scheduled = true;
     queueMicrotask(() => {
       scheduled = false;
       if (!ctx.signal.aborted) sync();
     });
-  });
-  observer.observe(document, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRIBUTES });
-  ctx.signal.addEventListener('abort', () => observer.disconnect());
+  };
+  // Changes inside what the current title bar is built from.
+  const content = new window.MutationObserver(schedule);
+  ctx.signal.addEventListener('abort', () => content.disconnect());
   sync();
+  // Elsewhere, only title bars, pages and menus coming or going. (A slotted action leaving
+  // its page is a change to the page's children, which `content` sees.)
+  observeElements(ctx, SOURCES, () => {
+    schedule();
+    return schedule;
+  });
 
   // The merchant clicked an action in the admin: click the app's element. Links that aren't
-  // anchors (`<s-link>`) dispatch `shopify:navigate`, like the nav menu's.
+  // anchors (`<s-link>`) dispatch `shopify:navigate`, like the nav menu's, which the app's router
+  // follows; App Bridge doesn't navigate the app itself. Buttons with an `href` are clicked, so
+  // their handlers run, and without Polaris to follow the `href` also dispatch `shopify:navigate`.
   onEvent(ctx, 'titleBar', (event, payload: { id: string }) => {
     if (event !== 'click') return;
     const element = elements.get(payload?.id);
     if (!(element instanceof window.HTMLElement)) return;
-    if (element.hasAttribute('href') && !(element instanceof window.HTMLAnchorElement)) {
-      element.dispatchEvent(new window.CustomEvent('shopify:navigate', { bubbles: true, composed: true }));
-    } else {
+    const navigate = () => element.dispatchEvent(new window.CustomEvent('shopify:navigate', { bubbles: true, composed: true }));
+    if (!element.hasAttribute('href') || element instanceof window.HTMLAnchorElement) {
       element.click();
+    } else if (element.localName === 's-link') {
+      navigate();
+    } else {
+      const allowed = element.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
+      if (allowed && !window.customElements?.get(element.localName)) navigate();
     }
   });
 }

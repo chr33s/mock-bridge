@@ -1,6 +1,6 @@
 import type { ShopifyGlobal } from '@shopify/app-bridge-types';
 import type { ModalContent } from '../stores.js';
-import { fire, observeElements, type FeatureContext } from './context.js';
+import { fire, mirror, observeElements, type FeatureContext } from './context.js';
 
 /** Mirrors `<ui-modal>` elements into the admin, which renders them. */
 function observeModalElements(ctx: FeatureContext) {
@@ -36,28 +36,34 @@ function observeModalElements(ctx: FeatureContext) {
     return clone.innerHTML.trim();
   }
 
-  observeElements(ctx, ['ui-modal'], modal => {
+  observeElements(ctx, ['ui-modal'], (modal, modalCtx) => {
     const data = extractModalData(modal);
     if (!data) return;
     const { id } = data;
 
     modal.style.display = 'none';
-    fire(ctx, 'modal', 'update', { id, heading: data.title, content: data });
+    mirror(ctx, 'modal', 'update', { id, heading: data.title, content: data });
     const html = extractModalHtml(modal);
-    if (html) fire(ctx, 'modal', 'updateHtml', { id, html });
+    if (html) mirror(ctx, 'modal', 'updateHtml', { id, html });
 
     // Content rendered into `modal.content` (e.g. by a framework portal) is mirrored as it changes.
-    const content = modal.ownerDocument.createElement('div');
-    (modal as unknown as { content: HTMLElement }).content = content;
-    const observer = new MutationObserver(() => fire(ctx, 'modal', 'updateHtml', { id, html: content.innerHTML }));
+    // A modal put back on the page keeps its content, which a portal may still render into.
+    const owner = modal as unknown as { content?: HTMLElement };
+    const content = owner.content ?? modal.ownerDocument.createElement('div');
+    owner.content = content;
+    if (content.innerHTML) mirror(ctx, 'modal', 'updateHtml', { id, html: content.innerHTML });
+    const observer = new MutationObserver(() => mirror(ctx, 'modal', 'updateHtml', { id, html: content.innerHTML }));
     observer.observe(content, { childList: true, subtree: true });
-    ctx.signal.addEventListener('abort', () => observer.disconnect());
+    modalCtx.signal.addEventListener('abort', () => observer.disconnect());
 
     Object.assign(modal, {
       show: () => fire(ctx, 'modal', 'show', { id }),
       hide: () => fire(ctx, 'modal', 'hide', { id }),
       toggle: () => fire(ctx, 'modal', 'toggle', { id }),
     });
+
+    // The modal left the page: the admin closes and forgets it.
+    return () => mirror(ctx, 'modal', 'remove', { id });
   });
 }
 

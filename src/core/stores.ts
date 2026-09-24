@@ -53,7 +53,7 @@ export type NavigationEntry =
   | { type: 'history'; url: string; replace: boolean }
   /** The app sent the merchant to an admin page, e.g. `shopify://admin/products` is `/products`. */
   | { type: 'admin'; path: string; newContext: boolean }
-  /** The app opened a URL outside itself, e.g. `window.open(url, '_blank')` or a `target="_top"` link. */
+  /** The app opened a URL in another window, e.g. `window.open(url, '_blank')` or a `target="_top"` link, or `window.open(url, '_self')`. */
   | { type: 'open'; url: string; target: string };
 
 export type NavigationState = {
@@ -61,7 +61,7 @@ export type NavigationState = {
   url: string | null;
   /** The admin page showing instead of the app, or `null` while the app shows. */
   adminPath: string | null;
-  /** Every navigation, in order. */
+  /** Every navigation, in order (the latest `maxNavigationEntries`). */
   entries: NavigationEntry[];
 };
 
@@ -124,15 +124,45 @@ export interface FeatureStore<S, A> {
   /** Changes the state: merges `change` into it. */
   set: Setter<S>;
   /** Puts the state back how it started. */
-  reset(): void;
+  reset(options?: ResetOptions): void;
   actions: A;
 }
 
-/** A feature's store. Each action runs as one batch, untracked; `onReset` clears what lives outside the state. */
+export interface ResetOptions {
+  /**
+   * Keeps what the app's page mirrors into the admin (its URL, title bar, nav menu, modals, save
+   * bars and app windows), closed: the elements are still there, and only report changes.
+   */
+  keepMirrored?: boolean;
+  /** Tells the app what the reset closed, e.g. an open app window, once the state is reset. @default true */
+  notify?: boolean;
+}
+
+interface StoreHooks<S> {
+  /** Clears what lives outside the state. */
+  onReset?: (state: S) => void;
+  /** Tells the app what a reset from `previous` closed. */
+  closed?: (previous: S) => void;
+  /** The part of the state the page's elements report, as it stays across `reset({ keepMirrored: true })`. */
+  mirrored?: (state: S) => Partial<S>;
+}
+
+/** `entries` without `id`. */
+const without = <T>(entries: Record<string, T>, id: string): Record<string, T> =>
+  Object.fromEntries(Object.entries(entries).filter(([key]) => key !== id));
+
+/** Each entry with `change` applied, e.g. every modal closed. */
+const each = <T>(entries: Record<string, T>, change: Partial<T>): Record<string, T> =>
+  Object.fromEntries(Object.entries(entries).map(([id, entry]) => [id, { ...entry, ...change }]));
+
+/** Each store's `closed` hook, for `resetFeatureStores` to call once every store is reset. */
+const closedHooks = new WeakMap<FeatureStore<any, any>, (previous: any) => void>();
+
+/** A feature's store. Each action runs as one batch, untracked. */
 function defineStore<S extends object, A extends Actions>(
   initial: S,
   actions: (set: Setter<S>, get: () => S) => A,
-  onReset?: () => void,
+  hooks: StoreHooks<S> = {},
 ): FeatureStore<S, A> {
   const state = signal(initial);
   const listeners = new Set<(state: S, previous: S) => void>();
@@ -144,19 +174,24 @@ function defineStore<S extends object, A extends Actions>(
   };
   const set: Setter<S> = change => write({ ...get(), ...(typeof change === 'function' ? change(get()) : change) });
 
-  return {
+  const store: FeatureStore<S, A> = {
     state,
     subscribe(listener) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
     },
     set,
-    reset() {
-      onReset?.();
-      write(initial);
+    reset(options = {}) {
+      const previous = get();
+      hooks.onReset?.(previous);
+      write({ ...initial, ...(options.keepMirrored ? hooks.mirrored?.(previous) : undefined) });
+      // After the write, so what the app does in response lands in the reset state.
+      if (options.notify !== false) hooks.closed?.(previous);
     },
     actions: Object.fromEntries(Object.entries(actions(set, get)).map(([name, fn]) => [name, action(fn)])) as A,
   };
+  if (hooks.closed) closedHooks.set(store, hooks.closed);
+  return store;
 }
 
 function createModalStore() {
@@ -182,8 +217,11 @@ function createModalStore() {
         update: (payload: { id: string; heading: string; content: ModalContent }) =>
           patch(payload.id, () => ({ heading: payload.heading, content: payload.content })),
         updateHtml: (payload: { id: string; html: string }) => patch(payload.id, () => ({ html: payload.html })),
+        /** The app's `<ui-modal>` left the page. */
+        remove: (payload: { id: string }) => set(state => ({ modalStates: without(state.modalStates, payload.id) })),
       };
     },
+    { mirrored: state => ({ modalStates: each(state.modalStates, { open: false }) }) },
   );
 }
 
@@ -196,7 +234,7 @@ function createLoadingStore() {
   );
 }
 
-function createSaveBarStore() {
+function createSaveBarStore(emit: FeatureEmitter) {
   return defineStore(
     { saveBars: {} as Record<string, SaveBarState> },
     set => {
@@ -211,7 +249,16 @@ function createSaveBarStore() {
         toggle: (payload: { id: string }) => patch(payload.id, saveBar => ({ visible: !saveBar.visible })),
         update: (payload: { id: string; discardConfirmation?: boolean }) =>
           patch(payload.id, () => ({ discardConfirmation: payload.discardConfirmation ?? false })),
+        /** The app's `<ui-save-bar>` or `form[data-save-bar]` left the page. */
+        remove: (payload: { id: string }) => set(state => ({ saveBars: without(state.saveBars, payload.id) })),
       };
+    },
+    {
+      // Tells the app, so a form with changes shows its save bar again on the next edit.
+      closed: previous => Object.values(previous.saveBars).forEach(({ id, visible }) => {
+        if (visible) emit('saveBar', 'hide', { id });
+      }),
+      mirrored: state => ({ saveBars: each(state.saveBars, { visible: false }) }),
     },
   );
 }
@@ -224,6 +271,7 @@ function createNavMenuStore() {
       addItem: (payload: NavItem) => set(state => ({ items: [...state.items, payload] })),
       clearItems: () => set({ items: [] }),
     }),
+    { mirrored: state => ({ items: state.items }) },
   );
 }
 
@@ -248,12 +296,12 @@ function createResourcePickerStore() {
   );
 }
 
-function createNavigationStore(emit: FeatureEmitter) {
+function createNavigationStore(emit: FeatureEmitter, maxEntries: number) {
   return defineStore(
     { url: null, adminPath: null, entries: [] } as NavigationState,
     set => {
       const record = (entry: NavigationEntry, change: Partial<NavigationState> = {}) =>
-        set(state => ({ ...change, entries: [...state.entries, entry] }));
+        set(state => ({ ...change, entries: [...state.entries.slice(Math.max(0, state.entries.length + 1 - maxEntries)), entry] }));
 
       return {
         sync: (payload: { url: string; replace: boolean }) =>
@@ -267,6 +315,8 @@ function createNavigationStore(emit: FeatureEmitter) {
         navigate: (payload: { href: string }) => emit('navigation', 'navigate', payload),
       };
     },
+    // The app's window stays where it is.
+    { mirrored: state => ({ url: state.url }) },
   );
 }
 
@@ -286,10 +336,19 @@ function createAppWindowStore(emit: FeatureEmitter) {
 
       return {
         update: (payload: { id: string; src: string | null }) => patch(payload.id, { src: payload.src }),
+        /** The app's `<s-app-window>` left the page. */
+        remove: (payload: { id: string }) => set(state => ({ appWindows: without(state.appWindows, payload.id) })),
         show: (payload: { id: string }) => setOpen(payload.id, true),
         hide: (payload: { id: string }) => setOpen(payload.id, false),
         toggle: (payload: { id: string }) => setOpen(payload.id, !get().appWindows[payload.id]?.open),
       };
+    },
+    {
+      // The admin closes what's open, as the merchant would.
+      closed: previous => Object.values(previous.appWindows).forEach(({ id, open }) => {
+        if (open) emit('appWindow', 'hide', { id });
+      }),
+      mirrored: state => ({ appWindows: each(state.appWindows, { open: false }) }),
     },
   );
 }
@@ -303,6 +362,7 @@ function createTitleBarStore(emit: FeatureEmitter) {
       /** The merchant clicked a title bar action. */
       click: (payload: { id: string }) => emit('titleBar', 'click', payload),
     }),
+    { mirrored: state => ({ titleBar: state.titleBar }) },
   );
 }
 
@@ -337,7 +397,7 @@ function createShareStore() {
       },
       setOutcome: (payload: { outcome: ShareOutcome | undefined }) => set({ outcome: payload.outcome }),
     }),
-    cancel,
+    { onReset: cancel },
   );
 }
 
@@ -353,6 +413,8 @@ function createPrintStore() {
 export interface FeatureStoresOptions {
   /** Delivers admin events to the app. */
   emit?: FeatureEmitter;
+  /** How many navigation entries to keep; older ones drop off. @default Infinity */
+  maxNavigationEntries?: number;
 }
 
 export function createFeatureStores(options: FeatureStoresOptions = {}) {
@@ -360,11 +422,11 @@ export function createFeatureStores(options: FeatureStoresOptions = {}) {
   return {
     modal: createModalStore(),
     loading: createLoadingStore(),
-    saveBar: createSaveBarStore(),
+    saveBar: createSaveBarStore(emit),
     navMenu: createNavMenuStore(),
     toast: createToastStore(),
     resourcePicker: createResourcePickerStore(),
-    navigation: createNavigationStore(emit),
+    navigation: createNavigationStore(emit, options.maxNavigationEntries ?? Infinity),
     appWindow: createAppWindowStore(emit),
     titleBar: createTitleBarStore(emit),
     share: createShareStore(),
@@ -383,6 +445,11 @@ export function runFeatureAction(stores: FeatureStores, feature: string, action:
   return { handled: true, result: (fn as (payload: unknown) => unknown)(payload) };
 }
 
-export function resetFeatureStores(stores: FeatureStores) {
-  for (const store of Object.values(stores)) store.reset();
+/** Resets every store, then tells the app what closed: what it does in response isn't undone by a later store's reset. */
+export function resetFeatureStores(stores: FeatureStores, options: ResetOptions = {}) {
+  const all: Array<FeatureStore<any, any>> = Object.values(stores);
+  const previous = all.map(store => store.state.peek());
+  for (const store of all) store.reset({ ...options, notify: false });
+  if (options.notify === false) return;
+  all.forEach((store, index) => closedHooks.get(store)?.(previous[index]));
 }
